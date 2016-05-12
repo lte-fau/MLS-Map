@@ -1,0 +1,296 @@
+body {
+	background-image: url("images/bg.png");
+	overflow-y: hidden;
+}
+
+#mainDiv{
+	border: 1px solid black;
+	border-radius: 5px;
+	background-color: rgba(255,255,255,0.8);
+	font-family: sans-serif;
+	font-weight: normal;
+	width:  100%;
+	height: 99.8%;
+}
+
+#map{
+	float:left;
+	border: 1px solid transparent;
+
+	height: -moz-calc(100% - 2px);
+	height: -webkit-calc(100% - 2px);
+	height: -o-calc(100% - 2px);
+	height: calc(100% - 2px);
+	
+	width: -moz-calc(100% - 202px);
+	width: -webkit-calc(100% - 202px);
+	width: -o-calc(100% - 202px);
+	width: calc(100% - 202px);
+}
+
+#controlDiv{
+	float: right;
+	width: 188px;
+	height: calc(100% - 32px);
+	border: 1px solid transparent;
+	padding: 5px;
+	overflow-y: hidden;
+	overflow-x: hidden;
+}
+
+#loadingGif{
+	background: url("images/loading.gif") no-repeat center;
+	text-align: center;
+	clear: both;
+	width: 100%;
+	height: 16px;
+}
+
+.tooltopClass{
+    display: inline-block;
+    font-size: 10px;
+}
+
+/*--- Headlines Selector --- */
+h1{
+	width: 184px;
+	text-align: center;
+	background-color: #EAEAEA;
+	color: #454545;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 3px;
+	font-size: 18px;
+	border: 1px solid;
+	border-color: #AAA;
+	border-radius: 3px;
+	padding-top: 5px;
+	padding-bottom: 5px;
+	margin-left: 1px;
+}
+
+h2{
+	width: 166px;
+	text-align: left;
+	color: #454545;
+	font-weight: 600;
+	letter-spacing: 1px;
+	font-size: 14px;
+	margin-left: 10px;
+}
+
+/*--- Mode Selector --- */
+#mlsModeDiv{
+	clear: both;
+	margin: 3px;
+}
+#mlsModeDiv label {
+	width: 160px;
+	margin-left: 10px;
+}
+
+/*--- Radio Selector --- */
+#typeSelectDiv{
+	font-size: 12px;
+	margin: auto;
+	text-align: center;
+}
+#typeSelectDiv label {
+	width: 56px;
+}
+
+#mncDisabledText{
+	font-size: 13px;
+	text-align: center;
+}
+
+/*--- MNC Selector --- */
+#mncSelectDiv{
+	margin: 7px;
+	margin-left: 13px;
+	padding: 5px;
+	width: 149px;
+	height: auto;
+	max-height: 40%;
+	overflow-y: auto;
+	overflow-x: hidden;
+	border: 1px solid;
+	border-color: #CCC;
+	border-radius: 3px;
+}
+#mncSelectDiv label{
+	width: 51px;
+	text-align: center;
+}
+#mncLaAll{
+	width: 147px !important;
+	text-align: center;
+}
+
+/*--- Buttons --- */
+.btnSmall{
+	width: 135px;
+	margin-left: 25px;
+	font-size: 12px;
+	text-transform: uppercase;
+	letter-spacing: 1px;
+}
+
+.btnBig{
+	width: 175px;
+	margin-left: 5px;
+	font-size: 12px;
+	text-transform: uppercase;
+	letter-spacing: 1px;
+}
+
+
+/*--- Search Menu --- *//
+
+.searchForm{
+	font-size: 12px;
+	letter-spacing: 2px;
+	text-align: center;
+	float: none;
+}
+
+.textInputSmall{
+	width: 100px;
+	margin: auto;
+	font-size: 12px;
+	letter-spacing: 2px;
+	color: #454545;
+	background-color: #F5F5F5;
+	border-radius: 3px;
+	text-align: center;
+}
+
+.searchForm label{
+    display: block;
+	text-align: left;
+	padding-left: 45px;
+	padding-top: 7px;
+}
+
+.checkboxInputSmall{
+	width: 180px;
+	font-size: 14px;
+	letter-spacing: 1px;
+	text-align: left;
+	float: none;
+	vertical-align: middle;
+	margin-bottom: 1px;
+	margin-left: 20px;
+}
+
+.singleRadioSelect{
+	width: 80px;
+	margin: auto;
+	background-color: #eee;
+	color: #454545;
+	text-transform: uppercase;
+	letter-spacing: 1px;
+	font-size: 12px;
+	padding: 2px 2px;
+	border-radius: 5px;
+	-webkit-border-radius: 5px;
+	border: 1px solid rgba(0,0,0,0.3);
+	border-bottom-width: 2px;
+}
+
+/*--- Settings Dialog --- */
+#settingsDialog{
+	font-size: 13px;
+}
+
+#settingsContainer{
+	width: 480px;
+}
+
+.settingsDialogDiv{
+	vertical-align: middle;
+}
+
+
+.settingsDialogDiv label{
+	width: auto;
+	vertical-align: middle;
+}
+.settingsDialogDiv input{
+	float: right;
+	width: 120px;
+	text-align: center;
+}
+
+#settingsContainer .ui-selectmenu-button{
+	vertical-align: middle;
+	float: right;
+	width: 118px !important;
+}
+
+#settingsContainer .ui-selectmenu-text{
+	text-align: center;
+	padding-left: 30px;
+}
+
+.settingsTextBox{
+	height: 25px;
+}
+.settingsTextBoxNM{
+	height: 25px;
+}
+
+#settingsContainer .menu-button + .ui-selectmenu-button{
+   vertical-align : middle;
+}
+
+.dSettingsDiv{
+	float: left;
+	width: 200px;
+}
+.dSettingsDiv input{
+	float: left;
+	width: 120px;
+}
+#settingsContainer .dSettingsDiv .ui-selectmenu-button{
+	float: left;
+}
+
+#leftSDiv{
+	padding-right: 10px;
+}
+
+/*--- Search Dialog --- */
+#searchDialog{
+	font-size: 13px;
+}
+
+#searchDialog .ui-selectmenu-button{
+	vertical-align: middle;
+	width: 80px !important;
+}
+
+#searchDialog .ui-selectmenu-text{
+	text-align: center;
+	padding-left: 0px;
+}
+
+#searchDialog label{
+	text-align: left;
+	width: auto;
+	vertical-align: middle;
+}
+
+.searchTextBox{
+	text-align: center;
+	width: 80px;
+}
+
+.dSearchDiv{
+	float: left;
+	width: 110px;
+}
+
+#bBtnDiv{
+	margin-top: 90px;
+}
