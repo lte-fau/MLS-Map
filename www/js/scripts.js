@@ -1,3 +1,5 @@
+/* Copyright (C) 2016  Lehrstuhl für Technische Elektronik, Friedrich-Alexander-Universität Erlangen-Nürnberg */
+/* https://github.com/lte-fau/MLS-Map/blob/master/LICENSE */
 //____ Settings ____
 var paraFilterLACs = true; 					// Remove small LACs
 var paraLacFilterLimit = 10;				// Minimum Location Area size to not be filtered
@@ -9,9 +11,9 @@ var paraCellClusterDisableLevel = 17;		// Zoom level at which cell clustering is
 var paraCellMaxCellAmount = 600;			// Max Cell amount at which clustering is Disabled
 var paraCellClusterRadius = 40;				// Cell cluster radius
 
-var paraClusteredClusterRadius = 80; 		// Radius of Clusters in Standard Mode
+var paraClusteredClusterRadius = 110; 		// Radius of Clusters in Standard Mode
 
-var paraLACClusteredClusterRadius = 70;		// Radius of Clusters in clustered LAC Mode
+var paraLACClusteredClusterRadius = 90;		// Radius of Clusters in clustered LAC Mode
 var paraLACClusterRadius = 30;				// Radius of Clusters in unclustered LAC Mode
 var paraLACClusterDisableLevel = 13;		// Zoom level at which LAC clustering is Disabled
 var paraLACMaxLacAmount = 250;				// Max LAC amount at which clustering is Disabled
@@ -66,7 +68,7 @@ var lacMarkerIcon = L.icon({
 	iconUrl: 'leaflet/images/lacMarkerGreen.png',
 	iconSize: [25, 27],
 	iconAnchor: [12, 13],
-	popupAnchor: [1, -34]
+	popupAnchor: [1, -20]
 });
 
 customMarker = L.Marker.extend({
@@ -74,11 +76,6 @@ customMarker = L.Marker.extend({
       displayNumber: 1
    }
 });
-
-function parseBool(val)
-{
-	return val === true || val === "true"
-}
 
 loadFromCookie = function()
 {
@@ -88,10 +85,10 @@ loadFromCookie = function()
 	}
 	else
 	{
-		paraFilterLACs = parseBool(Cookies.get('paraFilterLACs'));
+		paraFilterLACs = Cookies.get('paraFilterLACs') === "true";
 		paraLacFilterLimit = parseInt(Cookies.get('paraLacFilterLimit'));
 		
-		paraIgnoreOldData = parseBool(Cookies.get('paraIgnoreOldData'));
+		paraIgnoreOldData = Cookies.get('paraIgnoreOldData') === "true";
 		paraIgnoreDataAge = parseInt(Cookies.get('paraIgnoreDataAge'));
 		
 		paraCellClusterDisableLevel = parseInt(Cookies.get('paraCellClusterDisableLevel'));
@@ -659,8 +656,7 @@ setParams = function()
 		paraIgnoreOldData = false;
 	// Do some UNIX timestamp conversion
 	var ageStr = $("#SEToldDataThreshold").val();
-	var ageArr = ageStr.split("-");
-	paraIgnoreDataAge = parseInt(ageArr[0]) * 31536000 + parseInt(ageArr[1]) * 2628000;
+	paraIgnoreDataAge = parseInt(parseInt(ageStr)) * 2628000;
 	
 	paraAJAXTimeout = parseFloat($("#SETajaxTimeout").val());
 	paraSearchClusterRadius = parseFloat($("#SETsearchClusterRadius").val());
@@ -703,14 +699,22 @@ $(document).ready(function()
 	$("#typeSelectDiv").buttonset();
 	$("#mncSelectDiv").buttonset();
 	
+	$("#settingsBtn").button({
+		icons: {secondary: "ui-icon-newwin"}
+	});
+	
 	$("#sBtn").button({
 		icons: {secondary: "ui-icon-newwin"}
 	});
 	
+	$("#mncDisabledText").hide();
+	$("#loadingGif").hide();
+	
+	// Search Dialog
 	$("#searchDialog").dialog({
 		autoOpen: false,
-		width: 246,
-		maxWidth: 246,
+		width: 216,
+		maxWidth: 216,
 		buttons: [
 					{
 						text: "Search",
@@ -773,15 +777,6 @@ $(document).ready(function()
 							this.value = this.value.slice(0,-1);
 					});				
 				}
-	});
-
-	$("#sRadio").selectmenu();
-	
-	$("#mncDisabledText").hide();
-	$("#loadingGif").hide();
-	
-	$("#settingsBtn").button({
-		icons: {secondary: "ui-icon-newwin"}
 	});
 		
 	// Settings Dialog
@@ -849,9 +844,8 @@ $(document).ready(function()
 					
 					$("#SETignoreOldData").attr("checked", paraIgnoreOldData).button("refresh");
 					// Do some UNIX timestamp conversion
-					var years = Math.floor(paraIgnoreDataAge / 31536000);
-					var months = Math.floor((paraIgnoreDataAge % 31536000) / 2628000);
-					$("#SEToldDataThreshold").val(years + "-" + months);
+					var months = Math.floor(paraIgnoreDataAge / 2628000);
+					$("#SEToldDataThreshold").val(months);
 					
 					$("#SETajaxTimeout").val(paraAJAXTimeout).selectmenu("refresh");
 					$("#SETsearchClusterRadius").val(paraSearchClusterRadius);
@@ -889,7 +883,7 @@ $(document).ready(function()
     });
 	
 	$(document).tooltip({
-		tooltipClass: "tooltopClass"
+		tooltipClass: "tooltipClass"
 	});
 
 	initMap();	

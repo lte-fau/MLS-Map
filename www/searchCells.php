@@ -1,4 +1,6 @@
 <?php
+/* Copyright (C) 2016  Lehrstuhl für Technische Elektronik, Friedrich-Alexander-Universität Erlangen-Nürnberg */
+/* https://github.com/lte-fau/MLS-Map/blob/master/LICENSE */
 session_start();
 
 $type = $_POST["type"];

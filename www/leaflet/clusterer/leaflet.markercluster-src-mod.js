@@ -5,7 +5,9 @@
 */
 
 /*
+	MODIFIED FROM ORIGINAL:
 	Markers MUST have a "displayNumber" Option. The Value is used for weighting markers. AD
+	"weight" option added to clusters
 */
 
 (function (window, document, undefined) {/*
@@ -1352,7 +1354,7 @@ L.MarkerCluster = L.Marker.extend({
 		}
 	},
 
-	// Modified Funktion AD
+	// Modified Function AD
 	_recalculateBounds: function () {
 		var markers = this._markers,
 		    childClusters = this._childClusters,

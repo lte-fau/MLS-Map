@@ -1,31 +1,33 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<! Copyright (C) 2016  Lehrstuhl für Technische Elektronik, Friedrich-Alexander-Universität Erlangen-Nürnberg >
+<! https://github.com/lte-fau/MLS-Map/blob/master/LICENSE >
 <html>
 <head>
-	<title>MapView</title>
+	<title>MLS-MapView</title>
 	<meta charset="UTF-8">
 
 	<link rel="stylesheet" href="leaflet/leaflet.css" />
-	<script src="leaflet/leaflet-src.js"></script>
-	
 	<link rel="stylesheet" href="leaflet/clusterer/MarkerCluster.css" />
 	<link rel="stylesheet" href="leaflet/clusterer/MarkerCluster.Default.css" />
-	<script src="leaflet/clusterer/leaflet.markercluster-src-mod.js"></script>
-	<script src="leaflet/heat/leaflet-heat.js"></script>
-		
 	<link rel="stylesheet" href="leaflet/geosearch/css/l.geosearch.css" />
-	<script src="leaflet/geosearch/js/l.control.geosearch.js"></script>
-	<script src="leaflet/geosearch/js/l.geosearch.provider.openstreetmap.js"></script>
-	
-	<script src="js/jquery-2.2.2.js"></script>
-	<script src="js/js.cookie-2.1.1.min.js"></script>
-	
-	<link rel="stylesheet" href="jquery-ui/jquery-ui.css" />
-	<script src="jquery-ui/jquery-ui.js"></script>
+	<link rel="stylesheet" href="jquery-ui/jquery-ui.min.css" />
 	
 	<link rel="stylesheet" href="design.css" />
+	
+	<script src="leaflet/leaflet.js"></script>
+	<script src="leaflet/clusterer/leaflet.markercluster-src-mod.js"></script>
+	<script src="leaflet/heat/leaflet-heat.js"></script>
+	<script src="leaflet/geosearch/js/l.control.geosearch.js"></script>
+	<script src="leaflet/geosearch/js/l.geosearch.provider.openstreetmap.js"></script>
+	<script src="js/jquery.min.js"></script>
+	<script src="js/js.cookie-2.1.1.min.js"></script>
+	<script src="jquery-ui/jquery-ui.min.js"></script>
+
 	<script src="js/scripts.js"></script>		
+	
 </head>
 <body>
+
 	<div id="mainDiv">
 		<div id="map"></div>
 		<div id="controlDiv">
@@ -36,63 +38,35 @@
 				<input type="radio" id="mlsGLac" name="mlsModeS"><label for="mlsGLac"><b>Group by LAC</b></label>
 				<input type="radio" id="mlsHMMode" name="mlsModeS"><label for="mlsHMMode"><b>Heatmap</b></label>
 			</div>
-			
-			<p><h1>Options</h1><p>
-
+			<p>
+			<h1>Options</h1>
+			<p>
 			<div id="typeSelectDiv">
 				<input type="checkbox" class="checkboxInputBig" name="radioSelect" id="GSMBox" checked><label for="GSMBox">GSM</label>
 				<input type="checkbox" class="checkboxInputBig" name="radioSelect" id="UMTSBox" checked><label for="UMTSBox">UMTS</label>
 				<input type="checkbox" class="checkboxInputBig" name="radioSelect" id="LTEBox" checked><label for="LTEBox">LTE</label>
 			</div>
 			<p>
-			<div id="mncDiv">
-				<h2>Select MNCs</h2>
-				
-				<div class="ui-widget" id="mncDisabledText">
-					<div class="ui-state-highlight ui-corner-all" style="margin-top: 20px; padding: 0 .7em;">
-						<p><span class="ui-icon ui-icon-info" style="float: left; margin-right: .3em;"></span>
-						<strong>INFO:</strong> MNC Selection List is disabled on low zoom levels!</p>
-					</div>
-					<p>
-				</div>				
-				<div id="mncSelectDiv">
-					<input type="checkbox" class="mncSelect" id="mncAll" checked /><label id="mncLaAll" for="mncAll">Show All</label>
+
+			<h2>Select MNCs</h2>
+			
+			<div class="ui-widget" id="mncDisabledText">
+				<div class="ui-state-highlight ui-corner-all" style="margin-top: 20px; padding: 0 .7em;">
+					<p><span class="ui-icon ui-icon-info" style="float: left; margin-right: .3em;"></span>
+					<strong>INFO:</strong> MNC Selection List is disabled on low zoom levels!</p>
 				</div>
+			</div>				
+			<div id="mncSelectDiv">
+				<input type="checkbox" class="mncSelect" id="mncAll" checked /><label id="mncLaAll" for="mncAll">Show All</label>
 			</div>
-				
-			<p>		
-			<button type="Button" id="settingsBtn" class="btnBig">Settings..</button>		
+			
 			<p>
-			
+			<button type="Button" id="settingsBtn" class="btnBig">Settings..</button>
+			<p>
 			<button type="Button" id="sBtn" class="btnBig">Search..</button>
-			<div id="searchDialog" title="Search">
-			
-				<label for="sRadio">Network Type:</label>
-					<select id="sRadio">
-						<option value="GSM">GSM</option>
-						<option value="UMTS">UMTS</option>
-						<option value="LTE">LTE</option>
-				</select><br><br>
-				
-				<div class="dSearchDiv">
-					<label for ="sMcc">MCC:</label>
-					<input type="text" id="sMcc" class="searchTextBox" value="262"><br>
-					<label for ="sLac">LAC:</label>
-					<input type="text" id="sLac" class="searchTextBox" value="10102"><br>
-				</div>
-				<div class="dSearchDiv">
-					<label for ="sMnc">MNC:</label>
-					<input type="text" id="sMnc" class="searchTextBox" value="7"><br>
-					<label for ="sId">CID (optional):</label>
-					<input type="text" id="sId" class="searchTextBox" value=""><br>
-				</div>
-				<div id="bBtnDiv">
-					<label for ="sLACcellVis">Show LAC Cells</label>
-					<input type="checkbox" id="sLACcellVis" checked>
-				</div>
-			</div>
-			
-			<p><p><div id="loadingGif"></div>
+			<p><p>
+			<div id="loadingGif"></div>
+			<div id="srcLink"><a href="https://github.com/lte-fau/MLS-Map/" target="_blank">Source</a></div>
 		</div>
 	</div>
 	
@@ -103,7 +77,7 @@
 				<label for="SETignoreOldData">Ignore old Data</label>
 				<input type="checkbox" id="SETignoreOldData" title="Only applied if single Cells are loaded">
 				<label for="SEToldDataThreshold">Max time since last update:</label>
-				<input type="text" class="settingsTextBoxNM" id="SEToldDataThreshold" title="Age format: Year-Month, I.E. 1-2 for 1 Year and 2 Months">
+				<input type="text" class="settingsTextBox" id="SEToldDataThreshold" title="Age in months">
 				<p>
 				<label for="SETajaxTimeout">Ajax Timeout (ms):</label>
 				<select id="SETajaxTimeout">
@@ -142,7 +116,7 @@
 						<option>13</option>
 					</select><br><br>
 					<label for="SETcellMaxCellAmount">Max unclustered cell amount:</label><br>
-					<input type="text" class="settingsTextBox" id="SETcellMaxCellAmount" title="Max amount of onscreen cells without clustering"><br><br>
+					<input type="text" class="settingsTextBox" id="SETcellMaxCellAmount" title="Max amount of on-screen cells without clustering"><br><br>
 					<label for="SETcellClusterRadius">Cell cluster radius:</label><br>
 					<input type="text" class="settingsTextBox" id="SETcellClusterRadius" title="Pixel radius in which cells will be clustered together"><br><br>
 					<label for="SETclusteredClusterRadius">Clustered Cell cluster radius:</label><br>
@@ -164,7 +138,7 @@
 						<option>10</option>
 					</select><br><br>
 					<label for="SETLACMaxLacAmount">Max unclustered LAC amount:</label><br>
-					<input type="text" class="settingsTextBox" id="SETLACMaxLacAmount" title="Max amount of onscreen location areas without clustering"><br><br>
+					<input type="text" class="settingsTextBox" id="SETLACMaxLacAmount" title="Max amount of on-screen location areas without clustering"><br><br>
 					<label for="SETLACClusterRadius">LAC cluster radius</label><br>
 					<input type="text" class="settingsTextBox" id="SETLACClusterRadius" title="Pixel radius in which location areas will be clustered together"><br><br>
 					<label for="SETLACClusteredClusterRadius">Clustered LAC cluster radius:</label><br>
@@ -196,6 +170,32 @@
 					<input type="text" class="settingsTextBox" id="SETHMRadius" title="Size of heatmap points">
 				</div>
 			</div>
+		</div>
+	</div>
+	
+	<div id="searchDialog" title="Search">
+		<label for="sRadio">Network Type:</label>
+			<select id="sRadio">
+				<option value="GSM">GSM</option>
+				<option value="UMTS">UMTS</option>
+				<option value="LTE">LTE</option>
+		</select><br><br>
+		
+		<div class="dSearchDiv">
+			<label for ="sMcc">MCC:</label>
+			<input type="text" id="sMcc" class="searchTextBox" value="262"><br>
+			<label for ="sLac">LAC:</label>
+			<input type="text" id="sLac" class="searchTextBox" value="10102"><br>
+		</div>
+		<div class="dSearchDiv">
+			<label for ="sMnc">MNC:</label>
+			<input type="text" id="sMnc" class="searchTextBox" value="7"><br>
+			<label for ="sId">CID (optional):</label>
+			<input type="text" id="sId" class="searchTextBox" value=""><br>
+		</div>
+		<div id="bBtnDiv">
+			<label for ="sLACcellVis">Show LAC Cells</label>
+			<input type="checkbox" id="sLACcellVis" checked>
 		</div>
 	</div>
 	

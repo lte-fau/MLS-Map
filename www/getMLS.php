@@ -1,8 +1,7 @@
 <?php
+/* Copyright (C) 2016  Lehrstuhl für Technische Elektronik, Friedrich-Alexander-Universität Erlangen-Nürnberg */
+/* https://github.com/lte-fau/MLS-Map/blob/master/LICENSE */
 session_start();
-//$workerID = microtime(false);
-//$_SESSION["wID"] = $workerID; // Some unique workerID
-//session_write_close();
 
 function lon2x($lon) { return deg2rad($lon) * 6378137.0; }
 function lat2y($lat) { return log(tan(M_PI_4 + deg2rad($lat) / 2.0)) * 6378137.0; }
@@ -18,15 +17,6 @@ $zoom = $_POST["zoom"];
 $radios = $_POST["radios"];
 $nets = $_POST["nets"];
 $ageStamp = $_POST["ageStamp"];
-
-/*$latUL = 49;
-$lonUL = 6;
-$latOR = 52;
-$lonOR = 12;
-$exMode = "heat";
-$zoom = 8; // Cells at 13 or 14, LACsort between 9 and 14?
-$radios = "GSM|UMTS|";
-$nets = "ALL";*/
 
 
 // Mode Select
@@ -134,20 +124,6 @@ if($mode == "cell")
 	
 	$sql = "SELECT radio, mcc, net, area, cell, ST_X(pos), ST_Y(pos) FROM mls WHERE mls.pos && ST_MakeEnvelope (
 					$lonUL, $latUL, $lonOR, $latOR, 4326) AND radio IN ($inStringRadio) $inStringNet $inStringTime;";
-
-	/*pg_send_query($conn, $sql);
-	
-	while(pg_connection_busy($conn))
-	{
-		if($_SESSION["wID"] != $workerID)
-		{
-			pg_cancel_query($conn);
-			pg_close($conn);
-			die();
-		}
-	}
-	
-	$result = pg_get_result($conn);*/
 	
 	$result = pg_query($conn, $sql);
 	

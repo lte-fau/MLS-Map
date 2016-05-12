@@ -1,7 +1,9 @@
 <?php
+/* Copyright (C) 2016  Lehrstuhl für Technische Elektronik, Friedrich-Alexander-Universität Erlangen-Nürnberg */
+/* https://github.com/lte-fau/MLS-Map/blob/master/LICENSE */
 	function getLines($file)
 	{
-		$f = fopen($file, 'rb');
+		$f = fopen($file, 'r');
 		$lines = 0;
 
 		while (!feof($f))
@@ -17,11 +19,11 @@
 	$starttime = $mtime; 
 	
 	//__________Params___________
-	$mlsTableName = "mlsFullTest";
-	$lacTableName = "mlsLACsTest";
+	$mlsTableName = "mls";
+	$lacTableName = "mlsLACs";
 	
-	$mlsGixName = "mls_gix2";
-	$lacGixName = "lac_gix2";
+	$mlsGixName = "mls_gix";
+	$lacGixName = "lac_gix";
 	
 	$srcFileName = "full428.csv";
 	//___________________________	
@@ -112,8 +114,6 @@
 	if (!$result) {
 		echo "Couldn't create $mlsGixName.\n";
 	}
-	//CREATE INDEX area_idx ON mls (area);
-	//CREATE INDEX mnc_idx ON mls (net);
 	
 	
 	echo "Clustering spatial index..\n"	;

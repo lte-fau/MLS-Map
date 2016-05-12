@@ -1,3 +1,5 @@
+/* Copyright (C) 2016  Lehrstuhl für Technische Elektronik, Friedrich-Alexander-Universität Erlangen-Nürnberg */
+/* https://github.com/lte-fau/MLS-Map/blob/master/LICENSE */
 body {
 	background-image: url("images/bg.png");
 	overflow-y: hidden;
@@ -46,7 +48,14 @@ body {
 	height: 16px;
 }
 
-.tooltopClass{
+#srcLink{
+	font-size: 11px;
+    position: fixed;
+    bottom: 12px;
+    right: 12px;
+}
+
+.tooltipClass{
     display: inline-block;
     font-size: 10px;
 }
@@ -128,13 +137,6 @@ h2{
 }
 
 /*--- Buttons --- */
-.btnSmall{
-	width: 135px;
-	margin-left: 25px;
-	font-size: 12px;
-	text-transform: uppercase;
-	letter-spacing: 1px;
-}
 
 .btnBig{
 	width: 175px;
@@ -142,60 +144,6 @@ h2{
 	font-size: 12px;
 	text-transform: uppercase;
 	letter-spacing: 1px;
-}
-
-
-/*--- Search Menu --- *//
-
-.searchForm{
-	font-size: 12px;
-	letter-spacing: 2px;
-	text-align: center;
-	float: none;
-}
-
-.textInputSmall{
-	width: 100px;
-	margin: auto;
-	font-size: 12px;
-	letter-spacing: 2px;
-	color: #454545;
-	background-color: #F5F5F5;
-	border-radius: 3px;
-	text-align: center;
-}
-
-.searchForm label{
-    display: block;
-	text-align: left;
-	padding-left: 45px;
-	padding-top: 7px;
-}
-
-.checkboxInputSmall{
-	width: 180px;
-	font-size: 14px;
-	letter-spacing: 1px;
-	text-align: left;
-	float: none;
-	vertical-align: middle;
-	margin-bottom: 1px;
-	margin-left: 20px;
-}
-
-.singleRadioSelect{
-	width: 80px;
-	margin: auto;
-	background-color: #eee;
-	color: #454545;
-	text-transform: uppercase;
-	letter-spacing: 1px;
-	font-size: 12px;
-	padding: 2px 2px;
-	border-radius: 5px;
-	-webkit-border-radius: 5px;
-	border: 1px solid rgba(0,0,0,0.3);
-	border-bottom-width: 2px;
 }
 
 /*--- Settings Dialog --- */
@@ -210,7 +158,6 @@ h2{
 .settingsDialogDiv{
 	vertical-align: middle;
 }
-
 
 .settingsDialogDiv label{
 	width: auto;
@@ -234,9 +181,6 @@ h2{
 }
 
 .settingsTextBox{
-	height: 25px;
-}
-.settingsTextBoxNM{
 	height: 25px;
 }
 
@@ -263,6 +207,7 @@ h2{
 /*--- Search Dialog --- */
 #searchDialog{
 	font-size: 13px;
+	overflow-x: hidden;
 }
 
 #searchDialog .ui-selectmenu-button{
@@ -289,8 +234,10 @@ h2{
 .dSearchDiv{
 	float: left;
 	width: 110px;
+	margin-right: -15px;
 }
 
 #bBtnDiv{
 	margin-top: 90px;
+	text-align: center;
 }
