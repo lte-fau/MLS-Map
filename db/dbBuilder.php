@@ -66,11 +66,17 @@
 	$cLine = 1;
 	$numError = 0;
 	
+	pg_query($conn, "BEGIN");
+	
 	while(!feof($myfile)) {
 		$csvArray = fgetcsv($myfile);
 		$cLine++;
 		if($cLine % 4096 == 0)
+		{
+			pg_query($conn,"COMMIT");
 			echo "$cLine of $lines processed\n";
+			pg_query($conn, "BEGIN");
+		}
 		if(count($csvArray) == 14)
 		{
 			if($csvArray[5] == "")
@@ -102,6 +108,7 @@
 			}
 		} else
 		{
+			pg_query($conn, "COMMIT");
 			echo "A total of " . $numError . " lines were skipped.\n";
 			echo "Done creating main Table.\n";
 		}
