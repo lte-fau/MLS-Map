@@ -79,11 +79,7 @@ customMarker = L.Marker.extend({
 
 loadFromCookie = function()
 {
-	if(typeof Cookies.get('paraFilterLACs') == 'undefined')
-	{
-		saveToCookie();
-	}
-	else
+	if(!(typeof Cookies.get('paraFilterLACs') == 'undefined'))
 	{
 		paraFilterLACs = Cookies.get('paraFilterLACs') === "true";
 		paraLacFilterLimit = parseInt(Cookies.get('paraLacFilterLimit'));
@@ -710,6 +706,11 @@ $(document).ready(function()
 	$("#mncDisabledText").hide();
 	$("#loadingGif").hide();
 	
+	// Load Builddate
+	$.post('getInfo.php', {para: 'DB_DATE_STRING'}, function(data){
+		$("#buildInfo").append(data);
+	});
+	
 	// Search Dialog
 	$("#searchDialog").dialog({
 		autoOpen: false,
@@ -841,9 +842,7 @@ $(document).ready(function()
 					$("#SETHMRadius").addClass("ui-widget ui-widget-content ui-corner-all");
 					
 					// Populate UI
-					
 					$("#SETignoreOldData").attr("checked", paraIgnoreOldData).button("refresh");
-					// Do some UNIX timestamp conversion
 					var months = Math.floor(paraIgnoreDataAge / 2628000);
 					$("#SEToldDataThreshold").val(months);
 					

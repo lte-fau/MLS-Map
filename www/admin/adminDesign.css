@@ -1,0 +1,24 @@
+/* Copyright (C) 2016  Lehrstuhl für Technische Elektronik, Friedrich-Alexander-Universität Erlangen-Nürnberg */
+/* https://github.com/lte-fau/MLS-Map/blob/master/LICENSE */
+body {
+	background-image: url("../images/bg.png");
+	overflow-y: hidden;
+}
+
+#adminDiv{
+	border: 1px solid black;
+	border-radius: 5px;
+	background-color: rgba(255,255,255,0.8);
+	font-family: sans-serif;
+	font-weight: normal;
+	width:  70%;
+	height: 70%;
+	position: fixed;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+}
+
+.infotext{
+	font-size: 12px;
+}

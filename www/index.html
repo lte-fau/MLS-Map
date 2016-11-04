@@ -65,6 +65,7 @@
 			<p>
 			<button type="Button" id="sBtn" class="btnBig">Search..</button>
 			<p><p>
+			<div id="buildInfo"></div>
 			<div id="loadingGif"></div>
 			<div id="srcLink"><a href="https://github.com/lte-fau/MLS-Map/" target="_blank">Source</a></div>
 		</div>
@@ -149,7 +150,7 @@
 			<h3> Heatmap Settings </h3>
 			<div class="settingsDialogDiv">
 				<div class="dSettingsDiv" id="leftSDiv">	
-					<label for="SETHMDynamicValueModifier">Dynamic value Modifier:</label><br>
+					<label for="SETHMDynamicValueModifier">Dynamic value modifier:</label><br>
 					<select id="SETHMDynamicValueModifier" title="High value increases the dynamic influence of visible cell amount in inner zoom levels">
 						<option>0.5</option>
 						<option>0.6</option>
@@ -158,9 +159,9 @@
 						<option>0.9</option>
 						<option>1.0</option>
 					</select><br><br>	
-					<label for="SETHMDynamicCompareModifier">Dynamic compare Modifier:</label><br>
+					<label for="SETHMDynamicCompareModifier">Dynamic compare modifier:</label><br>
 					<input type="text" class="settingsTextBox" id="SETHMDynamicCompareModifier" title="Value alters scaling effect and threshold in inner zoom levels"><br><br>
-					<label for="SETHMClusteredMaxDivider">Clustered Max-value divider:</label><br>
+					<label for="SETHMClusteredMaxDivider">Clustered max-value divider:</label><br>
 					<input type="text" class="settingsTextBox" id="SETHMClusteredMaxDivider" title="Max Intensity Divider for Heatmap in outer zoom levels. Inceases dynamic range"><br>
 				</div>
 				<div class="dSettingsDiv">
@@ -190,7 +191,7 @@
 		<div class="dSearchDiv">
 			<label for ="sMnc">MNC:</label>
 			<input type="text" id="sMnc" class="searchTextBox" value="7"><br>
-			<label for ="sId">CID (optional):</label>
+			<label for ="sId">CID (Optional):</label>
 			<input type="text" id="sId" class="searchTextBox" value=""><br>
 		</div>
 		<div id="bBtnDiv">

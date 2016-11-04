@@ -20,23 +20,24 @@
 	
 	//__________Params___________
 	$mlsTableName = "mls";
-	$lacTableName = "mlsLACs";
+	$mlsLacTableName = "mlsLACs";
+	$generalTableName = "gInfo";
 	
 	$mlsGixName = "mls_gix";
-	$lacGixName = "lac_gix";
+	$mlsLacGixName = "mls_lac_gix";
 	
 	$srcFileName = "full428.csv";
 	//___________________________	
 	
 	// Create connection
-	include $_SERVER['DOCUMENT_ROOT'] . "/db/db-settings.php";
+	include "db-settings.php";
 	$conn = pg_connect($connString)
 		or die('Could not connect: ' . pg_last_error());
 
 	echo "Connected successfully\n";
 	
 	pg_query($conn, "DROP TABLE IF EXISTS $mlsTableName;");
-	pg_query($conn, "DROP TABLE IF EXISTS $lacTableName;");
+	pg_query($conn, "DROP TABLE IF EXISTS $mlsLacTableName;");
 
 	$result = pg_query($conn, "CREATE TABLE $mlsTableName(
 		radio char(10),
@@ -120,6 +121,7 @@
 	$result = pg_query($conn, $sql);
 	if (!$result) {
 		echo "Couldn't create $mlsGixName.\n";
+		exit;
 	}
 	
 	
@@ -128,6 +130,7 @@
 	$result = pg_query($conn, $sql);
 	if (!$result) {
 		echo "Couldn't cluster $mlsGixName.\n";
+		exit;
 	}
 	
 	
@@ -136,11 +139,12 @@
 	$result = pg_query($conn, $sql);
 	if (!$result) {
 		echo "Couldn't analyze Table.\n";
+		exit;
 	}
 	
 	
 	echo "Creating LAC Table..\n";
-	$sql = "CREATE TABLE $lacTableName(
+	$sql = "CREATE TABLE $mlsLacTableName(
 		radio char(10),
 		mcc smallint, 
 		net smallint,
@@ -152,44 +156,73 @@
 	$result = pg_query($conn, $sql);
 	if (!$result) {
 		echo "Couldn't create LAC Table.\n";
+		exit;
 	}
 	
 	
 	echo "Populating LAC Table..\n";
-	$sql = "INSERT INTO $lacTableName SELECT radio, mcc, net, area, 
+	$sql = "INSERT INTO $mlsLacTableName SELECT radio, mcc, net, area, 
 		ST_CENTROID(ST_COLLECT(ARRAY(SELECT t2.pos FROM $mlsTableName t2 WHERE t2.area = t1.area AND t2.mcc = t1.mcc AND t2.net = t1.net AND t2.radio = t1.radio))) 
 		AS cPos,
 		ST_NULLABLECONCAVEHULL(ST_COLLECT(ARRAY(SELECT t2.pos FROM $mlsTableName t2 WHERE t2.area = t1.area AND t2.mcc = t1.mcc AND t2.net = t1.net AND t2.radio = t1.radio)), 0.98) 
 		AS outline,
 		COUNT(*) AS size
 		FROM $mlsTableName t1
-		GROUP BY t1.area, t1.radio, t1.net, t1.mcc;";
+		GROUP BY t1.area, t1.radio, t1.net, t1.mcc";
 	$result = pg_query($conn, $sql);	
 	if (!$result) {
 		echo "Error populating LAC Database.\n";
+		exit;
 	}
 
 	
 	echo "Creating LAC index..\n";
-	$sql = "CREATE INDEX $lacGixName ON $lacTableName USING GIST (cPos);";
+	$sql = "CREATE INDEX $mlsLacGixName ON $mlsLacTableName USING GIST (cPos);";
 	$result = pg_query($conn, $sql);
 	if (!$result) {
-		echo "Couldn't create $lacGixName.\n";
+		echo "Couldn't create $mlsLacGixName.\n";
+		exit;
 	}
 	
 	echo "Clustering spatial index..\n";
-	$sql = "CLUSTER $lacTableName USING $lacGixName;";
+	$sql = "CLUSTER $mlsLacTableName USING $mlsLacGixName";
 	$result = pg_query($conn, $sql);
 	if (!$result) {
-		echo "Couldn't cluster $lacGixName.\n";
+		echo "Couldn't cluster $mlsLacGixName.\n";
+		exit;
 	}
 	
 	
-	echo "Analyzing $lacTableName..\n";
-	$sql = "ANALYZE $lacTableName;";
+	echo "Analyzing $mlsLacTableName..\n";
+	$sql = "ANALYZE $mlsLacTableName";
 	$result = pg_query($conn, $sql);	
 	if (!$result) {
 		echo "Couldn't analyze Table.\n";
+		exit;
+	}
+	
+	echo "Creating info table..\n";
+	// Main Db done. Create Versionstamp
+	$result = pg_query($conn, "CREATE TABLE IF NOT EXISTS $generalTableName(
+		para char(50) NOT NULL, 
+		time timestamp, 
+		sInfo char(50),
+		iInfo integer,
+		eInfo integer,
+		PRIMARY KEY (para))");
+
+	if (!$result) {
+	  echo "An error occurred during general Table creation.\n";
+	  exit;
+	}
+	
+	echo "Populating info table..\n";
+	$sql = "INSERT INTO gInfo VALUES ('MLS_BUILD_DATE', CURRENT_TIMESTAMP, null, null, $numError)
+		 ON CONFLICT (para) DO UPDATE SET time = CURRENT_TIMESTAMP, eInfo = $numError";
+	$result = pg_query($conn, $sql);	
+	if (!$result) {
+		echo "Couldn't create Builddate Entry.\n";
+		exit;
 	}
 	
 	pg_close($conn);
