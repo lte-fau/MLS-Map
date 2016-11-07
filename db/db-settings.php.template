@@ -1,3 +1,4 @@
 <?php
 	$connString = "host=XXXX dbname=XXXX user=XXXX password=XXXX";
+	$ocidAPIKey = "XXXXXXXXXXX";
 ?>

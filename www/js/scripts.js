@@ -42,8 +42,11 @@ var mlsLACPolyLayer;
 var mlsLACPolyHoverLayer = new L.layerGroup();
 var mlsCellLayer;
 
-var mlsAutoLoad = true;
-var mlsReqIsQueued = false;
+var autoLoad = true;
+var cellReqIsQueued = false;
+
+//Ajax responce is only loaded, if the newest request hasn't been answered. This prevents older but slower responces of overwriting newer Data
+var waitingForHash = 0;
 
 
 var greenMarkerIcon = L.icon({
@@ -173,6 +176,19 @@ deleteCookie = function()
 	
 	Cookies.remove('paraAJAXTimeout');
 }
+
+// Function to create simple hash
+function hashString (str){
+    var hash = 0;
+    if (str.length == 0) return hash;
+	
+    for (i = 0; i < str.length; i++) {
+        char = str.charCodeAt(i);
+        hash = ((hash<<5)-hash)+char;
+        hash = hash & hash;
+    }
+    return hash;
+}
 	
 initMap = function()
 {
@@ -221,8 +237,7 @@ searchLac = function()
 	$("#loadingGif").show();
 	$.post( 'searchCells.php', { type: 'lac', mcc: $("#sMcc").val(), mnc: $("#sMnc").val(), lac: $("#sLac").val(), radio: $("#sRadio").val()}, function( data )
 	{
-		if(mlsAutoLoad)
-			toggleAutoLoad();
+		autoLoad = false;
 		
 		$('input:radio[name="mlsModeS"]').prop('checked', false);
 		$("#mlsModeDiv").buttonset("refresh");
@@ -286,24 +301,24 @@ searchLac = function()
 	});
 }
 
-loadMlsData = function()
+loadCellData = function()
 {
 	// If Ajax active, wait until it finishes and start a new one
 	// Better version: Limit request freq. and cancel old requests (client AND server side)
 	// 1: if (ajaxReq = active) -> ajaxReq.abort(); 
 	// 2: newAjaxReq.start();
 	// 3: Kill old request on server!?
-	if(mlsReqIsQueued)
+	if(cellReqIsQueued)
 	{
 		if($.active > 0)
 			return;
 		else
-			mlsReqIsQueued = false;
+			cellReqIsQueued = false;
 	}
 	else if($.active > 0)
 	{
-		mlsReqIsQueued = true;
-		window.setTimeout(loadMlsData, 500);
+		cellReqIsQueued = true;
+		window.setTimeout(loadCellData, 500);
 		return;
 	}
 	
@@ -342,304 +357,323 @@ loadMlsData = function()
 	var ageVar = 0;
 	if(paraIgnoreOldData)
 		ageVar = Math.floor(Date.now() / 1000) - paraIgnoreDataAge;
+	
+	// Create hash of args to identify AJAX responce
+	var uHash = hashString(swBounds.lat + swBounds.lng + neBounds.lat + neBounds.lng + mapZoom + radioVar + "mnc" + ageVar);
+	waitingForHash = uHash;
 		
-	$.post( 'getMLS.php', {latUL: swBounds.lat, lonUL: swBounds.lng, latOR: neBounds.lat, lonOR: neBounds.lng, zoom: mapZoom, radios: radioVar, mode: "mnc", ageStamp: ageVar}, function( mncData )
+	$.post( 'getMLS.php', {hash: uHash, latUL: swBounds.lat, lonUL: swBounds.lng, latOR: neBounds.lat, lonOR: neBounds.lng, zoom: mapZoom, radios: radioVar, mode: "mnc", ageStamp: ageVar}, function( mncData )
 	{
 		var sMncData = mncData.split("&&");
-		if(sMncData.length == 1)
+		if((sMncData[0] == waitingForHash) || (waitingForHash != 0))
 		{
-			alert("Error in Response: " + data);
-			return;
-		}
-		
-		if(sMncData[1] == "DISABLED")
-		{
-			mncVar = "ALL";
-			$("#mncSelectDiv").children().hide();
-			$("#mncAll").prop('checked', true);
-			$("#mncLaAll").show();
-			$("#mncDisabledText").show("fast");
-		}
-		else
-		{
-			$("#mncDisabledText").hide("fast");
-			$("#mncSelectDiv").children().hide();
-			$("#mncLaAll").show();
+			if(sMncData[0] == waitingForHash)
+				waitingForHash = 0;
 			
-			var mncVar = "";
-			
-			var mncs = sMncData[1].split("|");
-			var lastObject;
-
-			for (var i = 0; i < (mncs.length - 1); i++)
+			if(sMncData.length == 2)
 			{
-				// Test if exists
-				if($("#mncLa" + mncs[i]).length)
-				{
-					$("#mncLa" + mncs[i]).show();
-
-					if($("#mnc" + mncs[i]).is(":checked"))
-						mncVar += mncs[i] + "|";
-				}
-				else
-				{
-					if(typeof lastObject !== 'undefined')
-						lastObject.after("<input type='checkbox' id='mnc" + mncs[i] + 
-											"' class='mncSelect'/><label id='mncLa" + mncs[i] + "' for='mnc" + mncs[i] + "'>" + mncs[i] + "</label>");	
-					else
-						$("#mncLaAll").after("<input type='checkbox' id='mnc" + mncs[i] + 
-											"' class='mncSelect'/><label id='mncLa" + mncs[i] + "' for='mnc" + mncs[i] + "'>" + mncs[i] + "</label>");
-				}
-				lastObject = $("#mncLa" + mncs[i]);
-			}
-			$("#mncSelectDiv").buttonset("refresh");
-		}
-
-		if($("#mncAll").is(":checked"))
-			mncVar = "ALL";
-		
-		if(mncVar == "")
-		{
-			// Nothing to load.
-			if(map.hasLayer(mlsViewLayer))
-				map.removeLayer(mlsViewLayer);
-			mlsLACPolyHoverLayer.clearLayers();
-			$("#loadingGif").hide();
-			return;
-		}
-		
-		if($("#mlsGLac").is(":checked"))
-			modeVar = "lacSort";
-		
-		if($("#mlsHMMode").is(":checked"))
-			modeVar = "heat";
-				
-		$.post( 'getMLS.php', {latUL: swBounds.lat, lonUL: swBounds.lng, latOR: neBounds.lat, lonOR: neBounds.lng, mode: modeVar, zoom: mapZoom, radios: radioVar, nets: mncVar, ageStamp: ageVar}, function( data )
-		{
-			if(map.hasLayer(mlsViewLayer))
-				map.removeLayer(mlsViewLayer);
-			mlsLACPolyHoverLayer.clearLayers();
-		
-			mlsViewLayer = L.layerGroup();
-			
-			var sData = data.split("&&");
-			if(sData.length == 1)
-			{
-				alert("Error in Response: " + data);
+				alert("Error in Response: " + mncData);
 				return;
 			}
 			
-			var mlsMarkerCluster;
-			var cData = sData[1].split("##");
-			
-			if(sData[0] == "cell")
+			if(sMncData[2] == "DISABLED")
 			{
-				var disableLevel = paraCellClusterDisableLevel;
-				if(cData.length < paraCellMaxCellAmount)
-					disableLevel = map.getZoom();
+				mncVar = "ALL";
+				$("#mncSelectDiv").children().hide();
+				$("#mncAll").prop('checked', true);
+				$("#mncLaAll").show();
+				$("#mncDisabledText").show("fast");
+			}
+			else
+			{
+				$("#mncDisabledText").hide("fast");
+				$("#mncSelectDiv").children().hide();
+				$("#mncLaAll").show();
+				
+				var mncVar = "";
+				
+				var mncs = sMncData[2].split("|");
+				var lastObject;
 
-				mlsMarkerCluster = L.markerClusterGroup({
-					iconCreateFunction: function (cluster) {
-						markers = cluster.getAllChildMarkers();
-						var number = 0;
-						for(var i = 0; i < markers.length; i++)
-							number += parseInt(markers[i].options.displayNumber);
-						var c = ' marker-cluster-';
-						if (number < 5) {
-							c += 'small';
-						} else if (number < 15) {
-							c += 'medium';
-						} else {
-							c += 'large';
-						}
-						return new L.DivIcon({ html: '<div><span>' + number + '</span></div>', className: 'marker-cluster' + c, iconSize: new L.Point(40, 40) });
-					},
-					maxClusterRadius: paraCellClusterRadius,
-					singleMarkerMode: false,
-					spiderfyOnMaxZoom: true,
-					showCoverageOnHover: true,
-					zoomToBoundsOnClick: true,
-					disableClusteringAtZoom: disableLevel
-				});
-
-				for (var i = 0; i < (cData.length - 1); i++)
+				for (var i = 0; i < (mncs.length - 1); i++)
 				{
-					var clusterData = cData[i].split("|");
-					
-					var marker = new customMarker([parseFloat(clusterData[6]), parseFloat(clusterData[5])], {displayNumber: 1})
-						.bindPopup("<center><b>" +  clusterData[0] + "</b></center><br>MCC: " + clusterData[1] + 
-								"<br>MNC: " + clusterData[2] + "<br>LAC: " + clusterData[3] + 
-								"<br>CID: " + clusterData[4]).setIcon(greenMarkerIcon);
-					mlsMarkerCluster.addLayer(marker);
-				}
-				
-			}else if (sData[0] == "cluster" || sData[0] == "lacSortClustered")
-			{	
-				var maxCRad = paraClusteredClusterRadius;
-				if(sData[0] == "lacSortClustered")
-					maxCRad = paraLACClusteredClusterRadius;
-				
-				mlsMarkerCluster = L.markerClusterGroup({
-					iconCreateFunction: function (cluster) {
-						markers = cluster.getAllChildMarkers();
-						var number = 0;
-						for(var i = 0; i < markers.length; i++)
-							number += parseInt(markers[i].options.displayNumber);
-						var c = ' marker-cluster-';
-						if (number < Math.pow(2, (20-mapZoom))) {
-							c += 'small';
-						} else if (number < Math.pow(2, (22-mapZoom))) {
-							c += 'medium';
-						} else {
-							c += 'large';
-						}
-						return new L.DivIcon({ html: '<div><span>' + number + '</span></div>', className: 'marker-cluster' + c, iconSize: new L.Point(40, 40) });
-					},
-					maxClusterRadius: maxCRad,
-					singleMarkerMode: true,
-					spiderfyOnMaxZoom: false,
-					showCoverageOnHover: false,
-					zoomToBoundsOnClick: false,
-				});
-				
-				for (var i = 0; i < (cData.length - 1); i++)
-				{
-					var clusterData = cData[i].split("|");
-					if(clusterData[2] != 0)
+					// Test if exists
+					if($("#mncLa" + mncs[i]).length)
 					{
-						var marker = new customMarker([parseFloat(clusterData[0]), parseFloat(clusterData[1])], {displayNumber: parseInt(clusterData[2])});
-						mlsMarkerCluster.addLayer(marker);
+						$("#mncLa" + mncs[i]).show();
+
+						if($("#mnc" + mncs[i]).is(":checked"))
+							mncVar += mncs[i] + "|";
 					}
-				}
-			}else if (sData[0] == "lacSort")
-			{				
-				var disableLevel = paraLACClusterDisableLevel;
-				if(cData.length < paraLACMaxLacAmount)
-					disableLevel = map.getZoom() - 3;
-				
-				mlsMarkerCluster = L.markerClusterGroup({
-					iconCreateFunction: function (cluster) {
-						markers = cluster.getAllChildMarkers();
-						var number = 0;
-						for(var i = 0; i < markers.length; i++)
-							number += parseInt(markers[i].options.displayNumber);
-						var c = ' marker-cluster-';
-						if (number < (1 * 20)) {
-							c += 'small';
-						} else if (number < (10 * 40)) {
-							c += 'medium';
-						} else {
-							c += 'large';
-						}
-						return new L.DivIcon({ html: '<div><span>' + number + '</span></div>', className: 'marker-cluster' + c, iconSize: new L.Point(40, 40) });
-					},
-					maxClusterRadius: paraLACClusterRadius,
-					singleMarkerMode: false,
-					spiderfyOnMaxZoom: false,
-					showCoverageOnHover: true,
-					zoomToBoundsOnClick: true,
-					disableClusteringAtZoom: disableLevel
-				});
-				
-				for (var i = 0; i < (cData.length - 1); i++)
-				{
-					var clusterData = cData[i].split("|");
-					if(clusterData[2] != 0)
+					else
 					{
-						if(!paraFilterLACs || (parseInt(clusterData[4]) >= paraLacFilterLimit))
+						if(typeof lastObject !== 'undefined')
+							lastObject.after("<input type='checkbox' id='mnc" + mncs[i] + 
+												"' class='mncSelect'/><label id='mncLa" + mncs[i] + "' for='mnc" + mncs[i] + "'>" + mncs[i] + "</label>");	
+						else
+							$("#mncLaAll").after("<input type='checkbox' id='mnc" + mncs[i] + 
+												"' class='mncSelect'/><label id='mncLa" + mncs[i] + "' for='mnc" + mncs[i] + "'>" + mncs[i] + "</label>");
+					}
+					lastObject = $("#mncLa" + mncs[i]);
+				}
+				$("#mncSelectDiv").buttonset("refresh");
+			}
+
+			if($("#mncAll").is(":checked"))
+				mncVar = "ALL";
+			
+			if(mncVar == "")
+			{
+				// Nothing to load.
+				if(map.hasLayer(mlsViewLayer))
+					map.removeLayer(mlsViewLayer);
+				mlsLACPolyHoverLayer.clearLayers();
+				$("#loadingGif").hide();
+				return;
+			}
+			
+			if($("#mlsGLac").is(":checked"))
+				modeVar = "lacSort";
+			
+			if($("#mlsHMMode").is(":checked"))
+				modeVar = "heat";
+			
+			var uHash = hashString(swBounds.lat + swBounds.lng + neBounds.lat + neBounds.lng + modeVar + mapZoom + radioVar + mncVar + ageVar);
+			waitingForHash = uHash;
+					
+			$.post( 'getMLS.php', {hash: uHash, latUL: swBounds.lat, lonUL: swBounds.lng, latOR: neBounds.lat, lonOR: neBounds.lng, mode: modeVar, zoom: mapZoom, radios: radioVar, nets: mncVar, ageStamp: ageVar}, function( data )
+			{
+				var sData = data.split("&&");
+				if(sData.length == 2)
+				{
+					alert("Error in Response: " + data);
+					return;
+				}
+				
+				if((sData[0] == waitingForHash) || (waitingForHash != 0))
+				{
+					if(sData[0] == waitingForHash)
+						waitingForHash = 0;
+				
+					if(map.hasLayer(mlsViewLayer))
+						map.removeLayer(mlsViewLayer);
+					mlsLACPolyHoverLayer.clearLayers();
+				
+					mlsViewLayer = L.layerGroup();
+					
+					var mlsMarkerCluster;
+					var cData = sData[2].split("##");
+					
+					if(sData[1] == "cell")
+					{
+						var disableLevel = paraCellClusterDisableLevel;
+						if(cData.length < paraCellMaxCellAmount)
+							disableLevel = map.getZoom();
+
+						mlsMarkerCluster = L.markerClusterGroup({
+							iconCreateFunction: function (cluster) {
+								markers = cluster.getAllChildMarkers();
+								var number = 0;
+								for(var i = 0; i < markers.length; i++)
+									number += parseInt(markers[i].options.displayNumber);
+								var c = ' marker-cluster-';
+								if (number < 5) {
+									c += 'small';
+								} else if (number < 15) {
+									c += 'medium';
+								} else {
+									c += 'large';
+								}
+								return new L.DivIcon({ html: '<div><span>' + number + '</span></div>', className: 'marker-cluster' + c, iconSize: new L.Point(40, 40) });
+							},
+							maxClusterRadius: paraCellClusterRadius,
+							singleMarkerMode: false,
+							spiderfyOnMaxZoom: true,
+							showCoverageOnHover: true,
+							zoomToBoundsOnClick: true,
+							disableClusteringAtZoom: disableLevel
+						});
+
+						for (var i = 0; i < (cData.length - 1); i++)
 						{
-							clusterData[1] = clusterData[1].replace(/\s+/g, '');
-							var polyLayer = L.geoJson(JSON.parse(clusterData[7])).bindPopup("<center><b>" +  clusterData[1] + 
-											"</b></center><br>LAC: " + clusterData[0] + 
-											"<br>MNC: " + clusterData[2] + 
-											"<br>MCC: " + clusterData[3]);
+							var clusterData = cData[i].split("|");
 							
-							var marker = new customMarker([parseFloat(clusterData[6]), parseFloat(clusterData[5])], 
-															{displayNumber: parseInt(clusterData[4]), 
-															lacPoly: polyLayer, lac: clusterData[0],
-															mnc: clusterData[2], mcc: clusterData[3], radio: clusterData[1]})
-										.bindPopup("<center><b>LAC: " + clusterData[0] + "</b></br>Size: " + clusterData[4] + "</center>")
-										.on('click', function(e) {
-											if(map.hasLayer(mlsLACOutlineLayer))
-												map.removeLayer(mlsLACOutlineLayer);
-											
-											if(this.options.lac != selectedLac)
-											{
-												mlsLACOutlineLayer = this.options.lacPoly;
-												map.addLayer(mlsLACOutlineLayer);
-												selectedLac = this.options.lac;
-											}else
-												selectedLac = undefined;
-											})
-										.on('mouseover', function (e) {
-											mlsLACPolyHoverLayer.clearLayers();
-											mlsLACPolyHoverLayer.addLayer(L.geoJson(this.options.lacPoly.toGeoJSON()));
-											this.openPopup();
-											})
-										.on('mouseout', function (e) {
-											mlsLACPolyHoverLayer.clearLayers();
-											this.closePopup();
-											})
-										.on('dblclick', function(e) {
-											mlsLACPolyHoverLayer.clearLayers();
-											if(map.hasLayer(mlsLACOutlineLayer))
-												map.removeLayer(mlsLACOutlineLayer);
-											mlsLACOutlineLayer = this.options.lacPoly;
-											map.addLayer(mlsLACOutlineLayer);
-											selectedLac = this.options.lac;
-											
-											// Zoom to LAC (-> LAC Search)
-											$("#sMcc").val(this.options.mcc);
-											$("#sMnc").val(this.options.mnc);
-											$("#sLac").val(this.options.lac);
-											$("#sRadio").val(this.options.radio);
-											$("#sId").val("");
-											searchLac();
-										})
-										.setIcon(lacMarkerIcon);
+							var marker = new customMarker([parseFloat(clusterData[6]), parseFloat(clusterData[5])], {displayNumber: 1})
+								.bindPopup("<center><b>" +  clusterData[0] + "</b></center><br>MCC: " + clusterData[1] + 
+										"<br>MNC: " + clusterData[2] + "<br>LAC: " + clusterData[3] + 
+										"<br>CID: " + clusterData[4]).setIcon(greenMarkerIcon);
 							mlsMarkerCluster.addLayer(marker);
 						}
-					}
-				}
-			}else if (sData[0] == "heat")
-			{	
-				
-				var latlngArray = new Array(cData.length - 1);
-				var maxValue = 1;
+						
+					}else if (sData[1] == "cluster" || sData[1] == "lacSortClustered")
+					{	
+						var maxCRad = paraClusteredClusterRadius;
+						if(sData[1] == "lacSortClustered")
+							maxCRad = paraLACClusteredClusterRadius;
+						
+						mlsMarkerCluster = L.markerClusterGroup({
+							iconCreateFunction: function (cluster) {
+								markers = cluster.getAllChildMarkers();
+								var number = 0;
+								for(var i = 0; i < markers.length; i++)
+									number += parseInt(markers[i].options.displayNumber);
+								var c = ' marker-cluster-';
+								if (number < Math.pow(2, (20-mapZoom))) {
+									c += 'small';
+								} else if (number < Math.pow(2, (22-mapZoom))) {
+									c += 'medium';
+								} else {
+									c += 'large';
+								}
+								return new L.DivIcon({ html: '<div><span>' + number + '</span></div>', className: 'marker-cluster' + c, iconSize: new L.Point(40, 40) });
+							},
+							maxClusterRadius: maxCRad,
+							singleMarkerMode: true,
+							spiderfyOnMaxZoom: false,
+							showCoverageOnHover: false,
+							zoomToBoundsOnClick: false,
+						});
+						
+						for (var i = 0; i < (cData.length - 1); i++)
+						{
+							var clusterData = cData[i].split("|");
+							if(clusterData[2] != 0)
+							{
+								var marker = new customMarker([parseFloat(clusterData[0]), parseFloat(clusterData[1])], {displayNumber: parseInt(clusterData[2])});
+								mlsMarkerCluster.addLayer(marker);
+							}
+						}
+					}else if (sData[1] == "lacSort")
+					{				
+						var disableLevel = paraLACClusterDisableLevel;
+						if(cData.length < paraLACMaxLacAmount)
+							disableLevel = map.getZoom() - 3;
+						
+						mlsMarkerCluster = L.markerClusterGroup({
+							iconCreateFunction: function (cluster) {
+								markers = cluster.getAllChildMarkers();
+								var number = 0;
+								for(var i = 0; i < markers.length; i++)
+									number += parseInt(markers[i].options.displayNumber);
+								var c = ' marker-cluster-';
+								if (number < (1 * 20)) {
+									c += 'small';
+								} else if (number < (10 * 40)) {
+									c += 'medium';
+								} else {
+									c += 'large';
+								}
+								return new L.DivIcon({ html: '<div><span>' + number + '</span></div>', className: 'marker-cluster' + c, iconSize: new L.Point(40, 40) });
+							},
+							maxClusterRadius: paraLACClusterRadius,
+							singleMarkerMode: false,
+							spiderfyOnMaxZoom: false,
+							showCoverageOnHover: true,
+							zoomToBoundsOnClick: true,
+							disableClusteringAtZoom: disableLevel
+						});
+						
+						for (var i = 0; i < (cData.length - 1); i++)
+						{
+							var clusterData = cData[i].split("|");
+							if(clusterData[2] != 0)
+							{
+								if(!paraFilterLACs || (parseInt(clusterData[4]) >= paraLacFilterLimit))
+								{
+									clusterData[1] = clusterData[1].replace(/\s+/g, '');
+									var polyLayer = L.geoJson(JSON.parse(clusterData[7])).bindPopup("<center><b>" +  clusterData[1] + 
+													"</b></center><br>LAC: " + clusterData[0] + 
+													"<br>MNC: " + clusterData[2] + 
+													"<br>MCC: " + clusterData[3]);
+									
+									var marker = new customMarker([parseFloat(clusterData[6]), parseFloat(clusterData[5])], 
+																	{displayNumber: parseInt(clusterData[4]), 
+																	lacPoly: polyLayer, lac: clusterData[0],
+																	mnc: clusterData[2], mcc: clusterData[3], radio: clusterData[1]})
+												.bindPopup("<center><b>LAC: " + clusterData[0] + "</b></br>Size: " + clusterData[4] + "</center>")
+												.on('click', function(e) {
+													if(map.hasLayer(mlsLACOutlineLayer))
+														map.removeLayer(mlsLACOutlineLayer);
+													
+													if(this.options.lac != selectedLac)
+													{
+														mlsLACOutlineLayer = this.options.lacPoly;
+														map.addLayer(mlsLACOutlineLayer);
+														selectedLac = this.options.lac;
+													}else
+														selectedLac = undefined;
+													})
+												.on('mouseover', function (e) {
+													mlsLACPolyHoverLayer.clearLayers();
+													mlsLACPolyHoverLayer.addLayer(L.geoJson(this.options.lacPoly.toGeoJSON()));
+													this.openPopup();
+													})
+												.on('mouseout', function (e) {
+													mlsLACPolyHoverLayer.clearLayers();
+													this.closePopup();
+													})
+												.on('dblclick', function(e) {
+													mlsLACPolyHoverLayer.clearLayers();
+													if(map.hasLayer(mlsLACOutlineLayer))
+														map.removeLayer(mlsLACOutlineLayer);
+													mlsLACOutlineLayer = this.options.lacPoly;
+													map.addLayer(mlsLACOutlineLayer);
+													selectedLac = this.options.lac;
+													
+													// Zoom to LAC (-> LAC Search)
+													$("#sMcc").val(this.options.mcc);
+													$("#sMnc").val(this.options.mnc);
+													$("#sLac").val(this.options.lac);
+													$("#sRadio").val(this.options.radio);
+													$("#sId").val("");
+													searchLac();
+												})
+												.setIcon(lacMarkerIcon);
+									mlsMarkerCluster.addLayer(marker);
+								}
+							}
+						}
+					}else if (sData[1] == "heat")
+					{	
+						
+						var latlngArray = new Array(cData.length - 1);
+						var maxValue = 1;
+							
+						for (var i = 0; i < (cData.length - 1); i++)
+						{
+							var clusterData = cData[i].split("|");	
+							var value = parseFloat(clusterData[2]);
+							latlngArray[i] = [parseFloat(clusterData[1]), parseFloat(clusterData[0]), value];
+							if(value > maxValue)
+								maxValue = value;
+						}
+						
+						// Dynamic Intensity Scaling
+						var mZoom = mapZoom;
+						if(maxValue == 1)
+						{
+							
+							var compVar = paraHMDynamicCompareModifier*Math.pow(18-mZoom, 2);
+							if(cData.length < compVar)
+								maxValue = (1-paraHMDynamicValueModifier) + paraHMDynamicValueModifier*cData.length/compVar;
+							mZoom = map.getMaxZoom();
+						}
+						else
+							maxValue /= paraHMClusteredMaxDivider;
+						
+						var heatLayer = L.heatLayer(latlngArray, {max: maxValue, blur: paraHMBlur, radius: paraHMRadius, maxZoom: mZoom});
+						mlsViewLayer.addLayer(heatLayer);
+						
+					}else alert("Error in Response: " + data);
 					
-				for (var i = 0; i < (cData.length - 1); i++)
-				{
-					var clusterData = cData[i].split("|");	
-					var value = parseFloat(clusterData[2]);
-					latlngArray[i] = [parseFloat(clusterData[1]), parseFloat(clusterData[0]), value];
-					if(value > maxValue)
-						maxValue = value;
-				}
-				
-				// Dynamic Intensity Scaling
-				var mZoom = mapZoom;
-				if(maxValue == 1)
-				{
+					if(typeof mlsMarkerCluster !== 'undefined')
+						mlsViewLayer.addLayer(mlsMarkerCluster);
+					map.addLayer(mlsViewLayer);
 					
-					var compVar = paraHMDynamicCompareModifier*Math.pow(18-mZoom, 2);
-					if(cData.length < compVar)
-						maxValue = (1-paraHMDynamicValueModifier) + paraHMDynamicValueModifier*cData.length/compVar;
-					mZoom = map.getMaxZoom();
+					$("#loadingGif").hide();
 				}
-				else
-					maxValue /= paraHMClusteredMaxDivider;
-				
-				var heatLayer = L.heatLayer(latlngArray, {max: maxValue, blur: paraHMBlur, radius: paraHMRadius, maxZoom: mZoom});
-				mlsViewLayer.addLayer(heatLayer);
-				
-			}else alert("Error in Response: " + data);
-			
-			if(typeof mlsMarkerCluster !== 'undefined')
-				mlsViewLayer.addLayer(mlsMarkerCluster);
-			map.addLayer(mlsViewLayer);
-			
-			$("#loadingGif").hide();
-		});
+			});
+		}
 	});
 }
 
@@ -706,6 +740,19 @@ $(document).ready(function()
 	$("#mncDisabledText").hide();
 	$("#loadingGif").hide();
 	
+	$.ajaxSetup({
+		timeout: paraAJAXTimeout,
+		error: function(x, t, m) {
+			if(t==="timeout") {
+				alert("Server took to long to respond. May be overloaded?");
+			} else {
+				// Some other Error
+			}
+			waitingForHash = 0;
+			$("#loadingGif").hide();
+		}
+	});
+	
 	// Load Builddate
 	$.post('getInfo.php', {para: 'DB_DATE_STRING'}, function(data){
 		$("#buildInfo").append(data);
@@ -714,8 +761,8 @@ $(document).ready(function()
 	// Search Dialog
 	$("#searchDialog").dialog({
 		autoOpen: false,
-		width: 216,
-		maxWidth: 216,
+		width: 218,
+		maxWidth: 218,
 		buttons: [
 					{
 						text: "Search",
@@ -790,8 +837,8 @@ $(document).ready(function()
 						text: "Ok",
 						click: function() {
 							setParams();
-							if(mlsAutoLoad)
-								loadMlsData();
+							if(autoLoad)
+								loadCellData();
 							$( this ).dialog( "close" );
 						}
 					},
@@ -800,8 +847,8 @@ $(document).ready(function()
 						click: function() {				
 							setParams();
 
-							if(mlsAutoLoad)
-								loadMlsData();
+							if(autoLoad)
+								loadCellData();
 						}
 					},
 					{
@@ -887,70 +934,39 @@ $(document).ready(function()
 
 	initMap();	
 	
-	$.ajaxSetup({
-		timeout: paraAJAXTimeout,
-		error: function(x, t, m) {
-			if(t==="timeout") {
-				alert("Ajax Request timeout.");
-			} else {
-				// Some other Error
-			}
-			$("#loadingGif").hide();
-		}
-	});
-	
-	if(mlsAutoLoad)
-		loadMlsData();
+	if(autoLoad)
+		loadCellData();
 
 	map.on('dragend', function(e) {
-		if(mlsAutoLoad)
-			loadMlsData();
+		if(autoLoad)
+			loadCellData();
 	});
 
 	map.on('zoomend', function(e) {
-		if(mlsAutoLoad)
-			loadMlsData();
+		if(autoLoad)
+			loadCellData();
 	});
 	
-	toggleAutoLoad = function()
-	{
-		if(mlsAutoLoad)
-		{
-			mlsAutoLoad = false;
-		}else
-		{
-			mlsAutoLoad = true;
-			loadMlsData();
-			
-			if(map.hasLayer(mlsLACCellLayer))
-				map.removeLayer(mlsLACCellLayer);
-			if(map.hasLayer(mlsLACPolyLayer))
-				map.removeLayer(mlsLACPolyLayer);
-			if(map.hasLayer(mlsCellLayer))
-				map.removeLayer(mlsCellLayer);
-		}
-	}
-	
 	$("input[name='radioSelect']").click(function() {
-		if(mlsAutoLoad)
-			loadMlsData();
+		if(autoLoad)
+			loadCellData();
 	});
 	
 	$("#mncSelectDiv").on( "click", ".mncSelect", function() {
 		//uncheck "Show all" if something else is clicked
 		if($(this).attr("id") == "mncAll")
-			loadMlsData();
+			loadCellData();
 		else
 		{
 			$("#mncAll").prop('checked', false);
-			loadMlsData();
+			loadCellData();
 		}
 	});
 	
 	$('input:radio[name="mlsModeS"]').change(function(){
-		mlsAutoLoad = true;
-		if(mlsAutoLoad)
-			loadMlsData();
+		autoLoad = true;
+		if(autoLoad)
+			loadCellData();
 		if(map.hasLayer(mlsLACOutlineLayer))
 			map.removeLayer(mlsLACOutlineLayer);
 		if(map.hasLayer(mlsLACCellLayer))
