@@ -8,6 +8,7 @@ function lat2y($lat) { return log(tan(M_PI_4 + deg2rad($lat) / 2.0)) * 6378137.0
 function x2lon($x) { return rad2deg($x / 6378137.0); }
 function y2lat($y) { return rad2deg(2.0 * atan(exp($y / 6378137.0)) - M_PI_2); }
 
+$hash = $_POST["hash"];
 $latUL = $_POST["latUL"];
 $lonUL = $_POST["lonUL"];
 $latOR = $_POST["latOR"];
@@ -112,7 +113,7 @@ if($ageStamp != 0)
 else
 	$inStringTime = "";
 
-include $_SERVER['DOCUMENT_ROOT'] . "/db/db-settings.php";
+include "../db/db-settings.php";
 $conn = pg_connect($connString)
 	or die('Could not connect: ' . pg_last_error());
 	
@@ -120,7 +121,7 @@ $conn = pg_connect($connString)
 // Do different querys depending on inputs Strings
 if($mode == "cell")
 {
-	$res = "cell&&";
+	$res = $hash . "&&cell&&";
 	
 	$sql = "SELECT radio, mcc, net, area, cell, ST_X(pos), ST_Y(pos) FROM mls WHERE mls.pos && ST_MakeEnvelope (
 					$lonUL, $latUL, $lonOR, $latOR, 4326) AND radio IN ($inStringRadio) $inStringNet $inStringTime;";
@@ -140,7 +141,7 @@ if($mode == "cell")
 	
 }else if($mode == "cluster")
 {
-	$res = "cluster&&";
+	$res = $hash . "&&cluster&&";
 	
 	$xySplit = 12;
 	
@@ -190,7 +191,7 @@ if($mode == "cell")
 	}
 }else if($mode == "lacSort")
 {
-	$res = "lacSort&&";
+	$res = $hash . "&&lacSort&&";
 	
 	$sql = "SELECT area, radio, net, mcc, size, ST_X(cPos), ST_Y(cPos), ST_AsGeoJSON(outline) 
 			FROM mlsLACs 
@@ -211,7 +212,7 @@ if($mode == "cell")
 	}
 }else if($mode == "lacSortClustered")
 {
-	$res = "lacSortClustered&&";
+	$res = $hash . "&&lacSortClustered&&";
 	
 	$xySplit = 15;
 	
@@ -261,7 +262,7 @@ if($mode == "cell")
 	}
 }else if($mode == "heat")
 {
-	$res = "heat&&";
+	$res = $hash . "&&heat&&";
 	
 	if($zoom > 8)
 	{
@@ -331,10 +332,10 @@ if($mode == "cell")
 	}		
 }else if($mode == "mnc")
 {
-	$res = "mnc&&";
+	$res = $hash . "&&mnc&&";
 			
 	if($zoom < 9)
-		$res = "mnc&&DISABLED";
+		$res .= "DISABLED";
 	else
 	{	
 		$sql = "SELECT DISTINCT net FROM mls WHERE mls.pos && ST_MakeEnvelope ($lonUL, $latUL, $lonOR, $latOR, 4326) AND radio IN ($inStringRadio) $inStringTime ORDER BY net;";

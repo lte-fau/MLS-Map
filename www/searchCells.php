@@ -14,7 +14,7 @@ if($radio != "GSM" && $radio != "UMTS" && $radio != "LTE")
 	die("Invalid.");
 
 // Create connection
-include $_SERVER['DOCUMENT_ROOT'] . "/db/db-settings.php";
+include "../db/db-settings.php";
 $conn = pg_connect($connString)
 	or die('Could not connect: ' . pg_last_error());
 	

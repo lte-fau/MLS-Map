@@ -48,6 +48,13 @@ body {
 	height: 16px;
 }
 
+#buildInfo{
+	font-size: 11px;
+	padding: 10px;
+	text-align: center;
+	color: #757575;
+}
+
 #srcLink{
 	font-size: 11px;
     position: fixed;
