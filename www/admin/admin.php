@@ -1,7 +1,6 @@
-<! Copyright (C) 2016  Lehrstuhl für Technische Elektronik, Friedrich-Alexander-Universität Erlangen-Nürnberg >
-<! https://github.com/lte-fau/MLS-Map/blob/master/LICENSE >
-
 <?php
+/* Copyright (C) 2016  Lehrstuhl für Technische Elektronik, Friedrich-Alexander-Universität Erlangen-Nürnberg */
+/* https://github.com/lte-fau/MLS-Map/blob/master/LICENSE */
 	include "secure.php";
 ?>
 
@@ -23,18 +22,19 @@
 
 	<div id="adminDiv">
 		<div id="tabs">
-		<ul>
-			<li><a href="#dbTab">Databases</a></li>
-			<li><a href="#ssTab">Serverside Settings</a></li>
-		</ul>
-		<div id="dbTab">
-			<p id="mlsDbVersion" class="infoText">MLS-Database Date: </p>
-			<p id="ocidDbVersion" class="infoText">OpenCellID-Database Date: </p>
+			<ul>
+				<li><a href="#dbTab">Databases</a></li>
+				<li><a href="#ssTab">Serverside Settings</a></li>
+			</ul>
+			<div id="dbTab">
+				<p id="mlsDbVersion" class="infoText">MLS-Database Date: </p>
+				<p id="ocidDbVersion" class="infoText">OpenCellID-Database Date: </p>
+			</div>
+			<div id="ssTab">
+				<p></p>
+			</div>
 		</div>
-		<div id="ssTab">
-			<p></p>
-		</div>
-		</div>
+		<div id="logout"><a href="logout.php">Logout</a></div>
 	</div>
 	
 </body>

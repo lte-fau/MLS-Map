@@ -19,6 +19,17 @@ body {
 	transform: translate(-50%, -50%);
 }
 
+#loginDiv{
+	position: center;
+}
+
 .infotext{
 	font-size: 12px;
+}
+
+#logout{
+	font-size: 11px;
+    position: fixed;
+    bottom: 12px;
+    right: 12px;
 }
