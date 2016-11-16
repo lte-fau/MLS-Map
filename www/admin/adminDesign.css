@@ -12,19 +12,84 @@ body {
 	font-family: sans-serif;
 	font-weight: normal;
 	width:  70%;
-	height: 70%;
+	height: 85%;
 	position: fixed;
 	top: 50%;
 	left: 50%;
 	transform: translate(-50%, -50%);
+	text-align: center;
 }
 
 #loginDiv{
-	position: center;
+	display: inline-block;
 }
 
 .infotext{
 	font-size: 12px;
+}
+
+h1{
+	text-align: center;
+	color: #454545;
+	font-weight: 500;
+	letter-spacing: 1px;
+	font-size: 22px;
+	margin: 15px;
+}
+
+h2{
+	text-align: center;
+	color: #454545;
+	font-weight: 600;
+	letter-spacing: 1px;
+	font-size: 18px;
+	margin: 15px;
+}
+
+#dbTab{
+    width: 95%;
+	text-align: center;
+    overflow: hidden;
+}
+#ocidDiv{
+	width: 48%;
+    float: left;
+	border-right: 1px solid gray;
+}
+#mlsDiv{
+    width: 48%;
+    float:left;
+}
+
+.linkBox{
+	margin: 15px;
+}
+
+#consoleDiv{
+	font-family: "Lucida Console";
+	height: 75%;
+	overflow-y: auto;
+	margin: 15px;
+	text-align: left;
+}
+
+#consoleDiv p{
+	margin: 0;
+}
+
+.buildBtn{
+	width: 175px;
+	margin-left: 5px;
+	font-size: 12px;
+	letter-spacing: 1px;
+}
+
+#loginForm label{
+	color: #454545;
+	text-align: center;
+	font-weight: 300;
+	letter-spacing: 1px;
+	font-size: 14px;
 }
 
 #logout{

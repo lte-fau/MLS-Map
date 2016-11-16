@@ -25,13 +25,34 @@
 			<ul>
 				<li><a href="#dbTab">Databases</a></li>
 				<li><a href="#ssTab">Serverside Settings</a></li>
+				<li><a href="#cTab">Console</a></li>
 			</ul>
 			<div id="dbTab">
-				<p id="mlsDbVersion" class="infoText">MLS-Database Date: </p>
-				<p id="ocidDbVersion" class="infoText">OpenCellID-Database Date: </p>
+				<div id="ocidDiv">
+					<h1> OpenCellID: </h1>
+					<p id="ocidDbVersion" class="infoText">Database Date: </p>
+					<p>
+					<p> Measurement DB seperate?
+					<p>
+					<button type="Button" id="rebuildOcidButton" class="buildBtn">Rebuild OCID</button>
+				</div>
+				
+				<div id="mlsDiv">
+					<h1> Mozilla Location Service: </h1>
+					<p id="mlsDbVersion" class="infoText">Database Date: </p>
+					<p>
+					<label for="linkBox">Download URL:</label><br>
+					<input type="text" name="mlsUrl" id="linkBox" class="TextBox"><br>
+					<p>
+					<button type="Button" id="rebuildMlsButton" class="buildBtn">Rebuild MLS</button>
+				</div>
 			</div>
 			<div id="ssTab">
 				<p></p>
+			</div>
+			<div id="cTab">
+				<div id="consoleDiv">
+				</div>
 			</div>
 		</div>
 		<div id="logout"><a href="logout.php">Logout</a></div>

@@ -865,6 +865,7 @@ $(document).ready(function()
 					$("#SETignoreOldData").button();
 					$("#SEToldDataThreshold").addClass("ui-widget ui-widget-content ui-corner-all");
 					$("#SETajaxTimeout").selectmenu({width: 140});
+					$("#dataSourceDiv").controlgroup();
 					$("#SETsearchClusterRadius").addClass("ui-widget ui-widget-content ui-corner-all");
 					$("#SETsearchClusterDisableLevel").selectmenu({width: 140});
 					

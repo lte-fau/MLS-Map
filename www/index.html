@@ -89,7 +89,18 @@
 					<option>10000</option>
 					<option>20000</option>
 				</select>
-				<br><p><br><p>
+				<br><p>
+				<div id="dataSourceDiv">
+					<fieldset>
+						<legend>Datasource: </legend>
+						<label for="mls">MLS</label>
+						<input type="radio" name="dataSourceRadio" id="mls">
+						<label for="ocid">OCID</label>
+						<input type="radio" name="dataSourceRadio" id="ocid">
+					</fieldset>
+				</div>
+				
+				<br><p>
 				<label for="SETsearchClusterRadius">Search cluster Radius:</label>
 				<input type="text" class="settingsTextBox" id="SETsearchClusterRadius" title="Pixel radius in which cells will be clustered together">
 				<br><p>

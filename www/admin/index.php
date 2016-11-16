@@ -87,20 +87,25 @@ if(isset($_SESSION['userid']))
 				if(isset($errorString))
 					echo $errorString;
 				else
-					echo "Please sign in.";
+					echo "<h2>Please sign in.</h2>";
 			?>
  
-			<form action="?login=1" method="post">
-				Username:<br>
-				<input type="text" size="50" maxlength="250" name="username"><br><br>
+			<form action="?login=1" method="post" id="loginForm">
+				<label for="usernameBox">Username:</label><br>
+				<input type="text" size="50" maxlength="250" name="username" id="usernameBox" class="TextBox"><br><br>
 				 
-				Password:<br>
-				<input type="password" size="50"  maxlength="250" name="password"><br>
-				 
-				<input type="submit" value="Login">
+				<label for="passwordBox">Password:</label><br>
+				<input type="password" size="50"  maxlength="250" name="password"  id="passwordBox" class="TextBox"><br>
+				<br>
+				<input type="submit" value="Login" class="TextBox">
 			</form> 
 		</div>
 	</div>
+	
+	<script type="text/javascript">
+		$("#usernameBox").addClass("ui-widget ui-widget-content ui-corner-all");
+		$("#passwordBox").addClass("ui-widget ui-widget-content ui-corner-all");
+	</script>
 	
 </body>
 </html>
