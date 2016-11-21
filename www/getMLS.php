@@ -18,6 +18,18 @@ $zoom = $_POST["zoom"];
 $radios = $_POST["radios"];
 $nets = $_POST["nets"];
 $ageStamp = $_POST["ageStamp"];
+$dataSource = $_POST["dataSource"];
+
+if($dataSource == "ocid")
+{
+	$mainTableName = "ocid";
+	$lacTableName = "ocidLACs";
+} else if($dataSource == "mls")
+{
+	$mainTableName = "mls";
+	$lacTableName = "mlsLACs";
+} else
+	die("Invalid.");
 
 
 // Mode Select
@@ -25,16 +37,11 @@ if($exMode == "mnc")
 	$mode = "mnc";
 else if($exMode == "heat")
 	$mode = "heat";
-else if($exMode == "lacSort")
+else if($exMode == "lacSort" || $zoom < 9)
 {
 	$mode = "lacSort";
 	if($zoom < 9) $mode .= "Clustered";
-}else if($zoom < 9)
-{
-	$mode = "lacSort";
-	if($zoom < 9) $mode .= "Clustered";
-}
-else if($zoom >= 13)
+}else if($zoom >= 13)
 	$mode = "cell"; 
 else
 	$mode = "cluster";
@@ -123,7 +130,7 @@ if($mode == "cell")
 {
 	$res = $hash . "&&cell&&";
 	
-	$sql = "SELECT radio, mcc, net, area, cell, ST_X(pos), ST_Y(pos) FROM mls WHERE mls.pos && ST_MakeEnvelope (
+	$sql = "SELECT radio, mcc, net, area, cell, ST_X(pos), ST_Y(pos) FROM $mainTableName WHERE pos && ST_MakeEnvelope (
 					$lonUL, $latUL, $lonOR, $latOR, 4326) AND radio IN ($inStringRadio) $inStringNet $inStringTime;";
 	
 	$result = pg_query($conn, $sql);
@@ -171,7 +178,7 @@ if($mode == "cell")
 			$latORBound = $baseLat + $latModifier*($j+1);
 			$lonORBound = $baseLon + $lonModifier*($i+1);
 			
-			$sql = "SELECT COUNT(*) FROM mls WHERE mls.pos && ST_MakeEnvelope (
+			$sql = "SELECT COUNT(*) FROM $mainTableName WHERE pos && ST_MakeEnvelope (
 					$lonULBound, $latULBound, $lonORBound, $latORBound, 4326) AND radio IN ($inStringRadio) $inStringNet $inStringTime;";
 		
 			$result = pg_query($conn, $sql);
@@ -194,7 +201,7 @@ if($mode == "cell")
 	$res = $hash . "&&lacSort&&";
 	
 	$sql = "SELECT area, radio, net, mcc, size, ST_X(cPos), ST_Y(cPos), ST_AsGeoJSON(outline) 
-			FROM mlsLACs 
+			FROM $lacTableName 
 			WHERE cPos && ST_MakeEnvelope ($lonUL, $latUL, $lonOR, $latOR, 4326) AND radio IN ($inStringRadio) $inStringNet;";
 	
 	$result = pg_query($conn, $sql);
@@ -242,7 +249,7 @@ if($mode == "cell")
 			$latORBound = $baseLat + $latModifier*($j+1);
 			$lonORBound = $baseLon + $lonModifier*($i+1);
 			
-			$sql = "SELECT SUM(size) FROM mlsLACs WHERE cPos && ST_MakeEnvelope (
+			$sql = "SELECT SUM(size) FROM $lacTableName WHERE cPos && ST_MakeEnvelope (
 					$lonULBound, $latULBound, $lonORBound, $latORBound, 4326) AND radio IN ($inStringRadio) $inStringNet;";
 		
 			$result = pg_query($conn, $sql);
@@ -266,7 +273,7 @@ if($mode == "cell")
 	
 	if($zoom > 8)
 	{
-		$sql = "SELECT ST_X(pos), ST_Y(pos) FROM mls WHERE mls.pos && ST_MakeEnvelope (
+		$sql = "SELECT ST_X(pos), ST_Y(pos) FROM $mainTableName WHERE pos && ST_MakeEnvelope (
 			$lonUL, $latUL, $lonOR, $latOR, 4326) AND radio IN ($inStringRadio) $inStringNet $inStringTime;";
 		
 		$result = pg_query($conn, $sql);
@@ -309,10 +316,10 @@ if($mode == "cell")
 				$lonORBound = $baseLon + $lonModifier*($i+1);
 				
 				if(zoom < 8)
-					$sql = "SELECT SUM(size) FROM mlsLACs WHERE cPos && ST_MakeEnvelope (
+					$sql = "SELECT SUM(size) FROM $lacTableName WHERE cPos && ST_MakeEnvelope (
 						$lonULBound, $latULBound, $lonORBound, $latORBound, 4326) AND radio IN ($inStringRadio) $inStringNet;";
 				else
-					$sql = "SELECT COUNT(*) FROM mls WHERE mls.pos && ST_MakeEnvelope (
+					$sql = "SELECT COUNT(*) FROM $mainTableName WHERE pos && ST_MakeEnvelope (
 							$lonULBound, $latULBound, $lonORBound, $latORBound, 4326) AND radio IN ($inStringRadio) $inStringNet $inStringTime;";
 			
 				$result = pg_query($conn, $sql);
@@ -338,7 +345,7 @@ if($mode == "cell")
 		$res .= "DISABLED";
 	else
 	{	
-		$sql = "SELECT DISTINCT net FROM mls WHERE mls.pos && ST_MakeEnvelope ($lonUL, $latUL, $lonOR, $latOR, 4326) AND radio IN ($inStringRadio) $inStringTime ORDER BY net;";
+		$sql = "SELECT DISTINCT net FROM $mainTableName WHERE pos && ST_MakeEnvelope ($lonUL, $latUL, $lonOR, $latOR, 4326) AND radio IN ($inStringRadio) $inStringTime ORDER BY net;";
 		$result = pg_query($conn, $sql);
 
 		if (!$result) {

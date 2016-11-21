@@ -48,7 +48,20 @@
 				</div>
 			</div>
 			<div id="ssTab">
-				<p></p>
+				<p>Params:</p>
+				<p>
+				<p>zoomlevel at witch cells are clustered</p>
+				<p>Clustered cells gridsize</p>
+				<p>
+				<p>Zoomlevel at witch to lacSort</p>
+				<p>Zoomlevel at witch lacSort is clustered </p>
+				<p>Clustered lACs gridsize</p>
+				<p>
+				<p>Heatmap resolution</p>
+				<p>Heatmap LAC level</p>
+				<p>
+				<p>Screen extension Factor </p>
+				<p>MNC disable level</p>
 			</div>
 			<div id="cTab">
 				<div id="consoleDiv">

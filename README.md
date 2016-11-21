@@ -1,19 +1,80 @@
 # MLS-Map
 
-A map visualization of the Mozilla Location Service database.
+A map visualization of the Mozilla Location Service and OpenCellID databases.
 
 ## Usage
 
 This project requires a PostGIS enabled PostgreSQL Database.
-Login information is stored in the _db-settings.php_.
+Login information is stored in the _db-settings.php_ as well as the default admin-interface credentials and the OpenCellID API Key.
 
-1.: Run the _ccHullWorkaround.php_ script. _ST_Concavehull_ sometimes fails. To prevent the tablecreation from failing, this script allows _null_ to be returned.
+##### 1.: Two functions are needed to enable the dbBuilder to work:
 
-2.: Get a full-cell-export of the Mozilla Location Service Database and copy the _.csv_ file to your server.
+The first works around _ST_Concavehull_ sometimes failing. It allows _null_ to be returned.
 
-3.: Change the filepath in the _dbBuilder.php_ script to your cell-export .csv.
+```sql
+CREATE OR REPLACE FUNCTION public.st_nullableconcavehull(param_geom geometry, param_pctconvex double precision, param_allow_holes boolean DEFAULT false)
+	RETURNS geometry AS
+$BODY$
+	DECLARE
+	BEGIN       
+		RETURN public.st_concavehull(param_geom,param_pctconvex,param_allow_holes);
+		EXCEPTION when others then RETURN null;
+	END;
+$BODY$
+	LANGUAGE plpgsql IMMUTABLE STRICT
+	COST 100;
+ALTER FUNCTION public.st_nullableconcavehull(geometry, double precision, boolean)
+	OWNER TO postgres;
+COMMENT ON FUNCTION public.st_nullableconcavehull(geometry, double precision, boolean) IS 'args: geomA, target_percent, allow_holes=false - The concave hull of a geometry represents a possibly concave geometry that encloses all geometries within the set. You can think of it as shrink wrapping.';
+```
 
-4.: Run the _dbBuilder.php_ script. This may take a long time (hours).
+
+The second enables usage of the _COPY_ command to allow fast import of the .csv data files. It has to be created by a superuser.
+
+```sql
+CREATE FUNCTION import_csv_file_to_table(table_name text, file_name text)
+	RETURNS VOID
+	LANGUAGE plpgsql
+	-- source: http://rwec.co.uk/blog/2014/02/securely-importing-and-exporting-csv-with-postgresql/
+	-- The magic ingredient: Anyone who can execute this can do so with superuser privileges,
+	--	as long as the function was created while logged in as a superuser.
+	SECURITY DEFINER
+	AS $BODY$
+	DECLARE
+		-- These must be as restrictive as possible, for security reasons
+		-- Hard-coded directory in which all CSV files to import will be placed
+		file_path text := '***PATH_TO_ADMIN_INTERFACE***';
+		-- File names must contain only alphanumerics, dashes and underscores,
+		--	and all must end in the extension .csv
+		file_name_regex text := E'^[a-zA-Z0-9_-]+\\.csv$';
+	BEGIN
+		-- Sanity check input
+		IF file_name !~ file_name_regex
+		THEN
+			RAISE EXCEPTION 'Invalid data file name (% doesn''t match %)', file_name, file_name_regex;
+		END IF;
+		-- OK? Go!
+		-- Make sure there's zero chance of SQL injection here
+		EXECUTE '
+			COPY ' || quote_ident(table_name) || '
+			FROM ' || quote_literal(file_path || file_name) || '
+			WITH (FORMAT CSV, HEADER);
+		';
+	END;
+$BODY$;
+-- Don't let just anyone do this privileged thing
+REVOKE ALL ON FUNCTION import_csv_file_to_table( table_name text, file_name text )
+	FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION import_csv_file_to_table( table_name text, file_name text )
+	TO ***YOUR_DB_USER***
+```
+
+##### 2.: Make sure php can write to the directory of the admin interface.
+
+##### 3.: Login into the Admin-Interface and create the databases.
+For Mozilla Location Service, a download link to a full cell export is required.
+
+For OpenCellID, the API-Key from  _db-settings.php_ is used to download the newest export.
 
 ## Third-party modules
 

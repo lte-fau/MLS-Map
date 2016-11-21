@@ -69,7 +69,7 @@ file_put_contents($logfilename, "*******************************************\n<b
 
 file_put_contents($logfilename, date("[Y-m-d H:i:s] ") . "Downloading datafile..\n", FILE_APPEND);
 echo "Downloading datafile..\n";
-file_put_contents($fileName, fopen($dataURL, 'r'));
+file_put_contents($fileName, fopen("$dataURL", 'r'));
 
 file_put_contents($logfilename, date("[Y-m-d H:i:s] ") . "Extracting file..\n", FILE_APPEND);
 echo "Extracting file..\n";
@@ -117,7 +117,7 @@ if($argv[1] == "mls")
 	fclose($file_read);
 	fclose($file_write);
 	
-	unlink(srcFileName);
+	unlink($srcFileName);
 	$srcFileName = $newFileName;
 }
 

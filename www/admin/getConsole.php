@@ -9,14 +9,11 @@ $file = fopen("log.txt","r");
 if($file != false)
 {
 	while(!feof($file))
-	{
 		$res .= fgets($file) . "|";
-	}
 
 	fclose($file);
 } else
 	$res = "NO_DATA";
-
 
 echo $res;	
 ?>

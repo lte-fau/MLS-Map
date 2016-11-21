@@ -7,6 +7,8 @@ var paraLacFilterLimit = 10;				// Minimum Location Area size to not be filtered
 var paraIgnoreOldData = false;				// Ignore Cell Data that hasn't been modified in some time
 var paraIgnoreDataAge = 7776000;			// Max Age (90d in seconds)
 
+var paraDataSource = "ocid";				// "mls" or "ocid", database to use
+
 var paraCellClusterDisableLevel = 17;		// Zoom level at which cell clustering is Disabled
 var paraCellMaxCellAmount = 600;			// Max Cell amount at which clustering is Disabled
 var paraCellClusterRadius = 40;				// Cell cluster radius
@@ -90,6 +92,8 @@ loadFromCookie = function()
 		paraIgnoreOldData = Cookies.get('paraIgnoreOldData') === "true";
 		paraIgnoreDataAge = parseInt(Cookies.get('paraIgnoreDataAge'));
 		
+		paraDataSource = Cookies.get('paraDataSource');
+		
 		paraCellClusterDisableLevel = parseInt(Cookies.get('paraCellClusterDisableLevel'));
 		paraCellMaxCellAmount = parseInt(Cookies.get('paraCellMaxCellAmount'));
 		paraCellClusterRadius = parseInt(Cookies.get('paraCellClusterRadius'));
@@ -120,6 +124,8 @@ saveToCookie = function()
 	
 	Cookies.set('paraIgnoreOldData', paraIgnoreOldData, {expires: 2000});
 	Cookies.set('paraIgnoreDataAge', paraIgnoreDataAge, {expires: 2000});
+	
+	Cookies.set('paraDataSource', paraDataSource, {expires: 2000});
 	
 	Cookies.set('paraCellClusterDisableLevel', paraCellClusterDisableLevel, {expires: 2000});
 	Cookies.set('paraCellMaxCellAmount', paraCellMaxCellAmount, {expires: 2000});
@@ -152,6 +158,8 @@ deleteCookie = function()
 	
 	Cookies.remove('paraIgnoreOldData');
 	Cookies.remove('paraIgnoreDataAge');
+	
+	Cookies.remove('paraDataSource');
 	
 	Cookies.remove('paraCellClusterDisableLevel');
 	Cookies.remove('paraCellMaxCellAmount');
@@ -235,7 +243,7 @@ initMap = function()
 searchLac = function()
 {
 	$("#loadingGif").show();
-	$.post( 'searchCells.php', { type: 'lac', mcc: $("#sMcc").val(), mnc: $("#sMnc").val(), lac: $("#sLac").val(), radio: $("#sRadio").val()}, function( data )
+	$.post( 'searchCells.php', { type: 'lac', mcc: $("#sMcc").val(), mnc: $("#sMnc").val(), lac: $("#sLac").val(), radio: $("#sRadio").val(), dataSource: paraDataSource}, function( data )
 	{
 		autoLoad = false;
 		
@@ -359,10 +367,10 @@ loadCellData = function()
 		ageVar = Math.floor(Date.now() / 1000) - paraIgnoreDataAge;
 	
 	// Create hash of args to identify AJAX responce
-	var uHash = hashString(swBounds.lat + swBounds.lng + neBounds.lat + neBounds.lng + mapZoom + radioVar + "mnc" + ageVar);
+	var uHash = hashString(swBounds.lat + swBounds.lng + neBounds.lat + neBounds.lng + mapZoom + radioVar + "mnc" + ageVar + paraDataSource);
 	waitingForHash = uHash;
 		
-	$.post( 'getMLS.php', {hash: uHash, latUL: swBounds.lat, lonUL: swBounds.lng, latOR: neBounds.lat, lonOR: neBounds.lng, zoom: mapZoom, radios: radioVar, mode: "mnc", ageStamp: ageVar}, function( mncData )
+	$.post( 'getMLS.php', {hash: uHash, latUL: swBounds.lat, lonUL: swBounds.lng, latOR: neBounds.lat, lonOR: neBounds.lng, zoom: mapZoom, radios: radioVar, nets: "mnc", mode: "mnc", ageStamp: ageVar, dataSource: paraDataSource}, function( mncData )
 	{
 		var sMncData = mncData.split("&&");
 		if((sMncData[0] == waitingForHash) || (waitingForHash != 0))
@@ -438,10 +446,10 @@ loadCellData = function()
 			if($("#mlsHMMode").is(":checked"))
 				modeVar = "heat";
 			
-			var uHash = hashString(swBounds.lat + swBounds.lng + neBounds.lat + neBounds.lng + modeVar + mapZoom + radioVar + mncVar + ageVar);
+			var uHash = hashString(swBounds.lat + swBounds.lng + neBounds.lat + neBounds.lng + modeVar + mapZoom + radioVar + mncVar + ageVar + paraDataSource);
 			waitingForHash = uHash;
 					
-			$.post( 'getMLS.php', {hash: uHash, latUL: swBounds.lat, lonUL: swBounds.lng, latOR: neBounds.lat, lonOR: neBounds.lng, mode: modeVar, zoom: mapZoom, radios: radioVar, nets: mncVar, ageStamp: ageVar}, function( data )
+			$.post( 'getMLS.php', {hash: uHash, latUL: swBounds.lat, lonUL: swBounds.lng, latOR: neBounds.lat, lonOR: neBounds.lng, mode: modeVar, zoom: mapZoom, radios: radioVar, nets: mncVar, ageStamp: ageVar, dataSource: paraDataSource}, function( data )
 			{
 				var sData = data.split("&&");
 				if(sData.length == 2)
@@ -688,6 +696,8 @@ setParams = function()
 	var ageStr = $("#SEToldDataThreshold").val();
 	paraIgnoreDataAge = parseInt(parseInt(ageStr)) * 2628000;
 	
+	paraDataSource = $("#SETdataSource").val();
+	
 	paraAJAXTimeout = parseFloat($("#SETajaxTimeout").val());
 	paraSearchClusterRadius = parseFloat($("#SETsearchClusterRadius").val());
 	paraSearchClusterDisableLevel = parseInt($("#SETsearchClusterDisableLevel").val());
@@ -864,12 +874,12 @@ $(document).ready(function()
 					// Load UI
 					$("#SETignoreOldData").button();
 					$("#SEToldDataThreshold").addClass("ui-widget ui-widget-content ui-corner-all");
-					$("#SETajaxTimeout").selectmenu({width: 140});
-					$("#dataSourceDiv").controlgroup();
+					$("#SETajaxTimeout").selectmenu();
+					$("#SETdataSource").selectmenu();
 					$("#SETsearchClusterRadius").addClass("ui-widget ui-widget-content ui-corner-all");
-					$("#SETsearchClusterDisableLevel").selectmenu({width: 140});
+					$("#SETsearchClusterDisableLevel").selectmenu();
 					
-					$("#SETcellClusterDisableLevel").selectmenu({width: 140});
+					$("#SETcellClusterDisableLevel").selectmenu();
 					$("#SETcellMaxCellAmount").addClass("ui-widget ui-widget-content ui-corner-all");
 					$("#SETcellClusterRadius").addClass("ui-widget ui-widget-content ui-corner-all");
 					$("#SETclusteredClusterRadius").addClass("ui-widget ui-widget-content ui-corner-all");
@@ -879,12 +889,12 @@ $(document).ready(function()
 					
 					$("#SETparaLACClusterRadius").addClass("ui-widget ui-widget-content ui-corner-all");
 					$("#SETLACClusteredClusterRadius").addClass("ui-widget ui-widget-content ui-corner-all");
-					$("#SETLACClusterDisableLevel").selectmenu({width: 140});
+					$("#SETLACClusterDisableLevel").selectmenu();
 					$("#SETLACMaxCLacAmount").addClass("ui-widget ui-widget-content ui-corner-all");
 					
 					$("#SETHMClusteredMaxDivider").addClass("ui-widget ui-widget-content ui-corner-all");
 					$("#SETHMDynamicCompareModifier").addClass("ui-widget ui-widget-content ui-corner-all");
-					$("#SETHMDynamicValueModifier").selectmenu({width: 140});
+					$("#SETHMDynamicValueModifier").selectmenu();
 					
 					$("#SETHMBlur").addClass("ui-widget ui-widget-content ui-corner-all");
 					$("#SETHMRadius").addClass("ui-widget ui-widget-content ui-corner-all");
@@ -895,6 +905,7 @@ $(document).ready(function()
 					$("#SEToldDataThreshold").val(months);
 					
 					$("#SETajaxTimeout").val(paraAJAXTimeout).selectmenu("refresh");
+					$("#SETdataSource").val(paraDataSource).selectmenu("refresh");
 					$("#SETsearchClusterRadius").val(paraSearchClusterRadius);
 					$("#SETsearchClusterDisableLevel").val(paraSearchClusterDisableLevel).selectmenu("refresh");
 					
