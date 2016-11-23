@@ -43,7 +43,7 @@ CREATE FUNCTION import_csv_file_to_table(table_name text, file_name text)
 	DECLARE
 		-- These must be as restrictive as possible, for security reasons
 		-- Hard-coded directory in which all CSV files to import will be placed
-		file_path text := '***PATH_TO_ADMIN_INTERFACE***';
+		file_path text := '***PATH_TO_ADMIN/TMP_FOLDER***';
 		-- File names must contain only alphanumerics, dashes and underscores,
 		--	and all must end in the extension .csv
 		file_name_regex text := E'^[a-zA-Z0-9_-]+\\.csv$';
@@ -66,10 +66,10 @@ $BODY$;
 REVOKE ALL ON FUNCTION import_csv_file_to_table( table_name text, file_name text )
 	FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION import_csv_file_to_table( table_name text, file_name text )
-	TO ***YOUR_DB_USER***
+	TO ***YOUR_DB_USER***;
 ```
 
-##### 2.: Make sure php can write to the directory of the admin interface.
+##### 2.: Make sure php can write to _admin/tmp/_
 
 ##### 3.: Login into the Admin-Interface and create the databases.
 For Mozilla Location Service, a download link to a full cell export is required.

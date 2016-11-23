@@ -7,7 +7,7 @@ include "db-settings.php";
 if($argv[1] == "ocid")
 {
 	//__________Params___________
-	$fileName = "OCIDTowers.csv.gz";
+	$fileName = "tmp/OCIDTowers.csv.gz";
 
 	$tempImportName = "bulkcells";
 	$tempTableName = "tempCells";
@@ -59,7 +59,7 @@ $mtime = explode(" ",$mtime);
 $mtime = $mtime[1] + $mtime[0]; 
 $starttime = $mtime; 
 
-$logfilename = "log.txt";
+$logfilename = "tmp/log.txt";
 
 
 file_put_contents($logfilename, "<br>*******************************************\n", FILE_APPEND);
@@ -81,9 +81,7 @@ $file = gzopen($fileName, 'rb');
 $outputFile = fopen($outputFileName, 'wb'); 
 
 if($file == false || $outputFile == false)
-{
 	exit;
-}
 
 while (!gzeof($file)) {
     fwrite($outputFile, gzread($file, $buffer_size));
@@ -102,10 +100,10 @@ if($argv[1] == "mls")
 	file_put_contents($logfilename, date("[Y-m-d H:i:s] ") . "Removing carriage return characters..\n", FILE_APPEND);
 	echo "Removing carriage return characters..\n";
 	
-	
-	$file_read = fopen($srcFileName, "r");
-	$newFileName = "Mod" . $srcFileName;
-	$file_write = fopen($newFileName, "w+");
+	$file_read = fopen($outputFileName, "r");
+	$outputFileName = str_replace('tmp/', '', $outputFileName); 
+	$outputFileName = "Mod" . $outputFileName;
+	$file_write = fopen($outputFileName, "w+");
 	
 	while(!feof($file_read))
 	{
@@ -118,13 +116,12 @@ if($argv[1] == "mls")
 	fclose($file_write);
 	
 	unlink($srcFileName);
-	$srcFileName = $newFileName;
 }
 
+$srcFileName = str_replace('tmp/', '', $outputFileName); 
 
 file_put_contents($logfilename, date("[Y-m-d H:i:s] ") . "All done! Starting DbBuilder..\n", FILE_APPEND);
 echo "All done! Starting DbBuilder..\n";
-
 
 // Create connection
 include "db-settings.php";
@@ -227,7 +224,7 @@ if (!$result) {
 
 file_put_contents($logfilename, date("[Y-m-d H:i:s] ") . "Creating indexes..\n", FILE_APPEND);
 echo "Creating indexes..\n";
-$sql = "CREATE INDEX $tempGixName ON $tempTableName USING GIST (pos);";
+$sql = "CREATE INDEX $tempGixName ON $tempTableName USING GIST (pos)";
 $result = pg_query($conn, $sql);
 if (!$result) {
 	file_put_contents($logfilename, date("[Y-m-d H:i:s] ") . "Couldn't create $tempGixName.\n", FILE_APPEND);
@@ -376,7 +373,6 @@ if (!$result) {
 
 file_put_contents($logfilename, date("[Y-m-d H:i:s] ") . "Creating info table..\n", FILE_APPEND);
 echo "Creating info table..\n";
-// Main Db done. Create Versionstamp
 $result = pg_query($conn, "CREATE TABLE IF NOT EXISTS $generalTableName(
 	para char(50) NOT NULL, 
 	time timestamp, 

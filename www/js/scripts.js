@@ -35,14 +35,16 @@ var paraAJAXTimeout = 5000;
 //____ Vars ____
 var map;
 
-var mlsViewLayer;
+var cellViewLayer;
 var selectedLac;
 
-var mlsLACOutlineLayer;
-var mlsLACCellLayer;
-var mlsLACPolyLayer;
-var mlsLACPolyHoverLayer = new L.layerGroup();
-var mlsCellLayer;
+var cvLACOutlineLayer;
+var cvLACCellLayer;
+var cvLACPolyLayer;
+var cvLACPolyHoverLayer = new L.layerGroup();
+var csCellLayer;
+
+var measLayer;
 
 var autoLoad = true;
 var cellReqIsQueued = false;
@@ -74,12 +76,6 @@ var lacMarkerIcon = L.icon({
 	iconSize: [25, 27],
 	iconAnchor: [12, 13],
 	popupAnchor: [1, -20]
-});
-
-customMarker = L.Marker.extend({
-   options: { 
-      displayNumber: 1
-   }
 });
 
 loadFromCookie = function()
@@ -228,7 +224,7 @@ initMap = function()
 	map.removeLayer(otmLayer);
 	
 	L.control.layers(baseMaps).addTo(map);
-	map.addLayer(mlsLACPolyHoverLayer);
+	map.addLayer(cvLACPolyHoverLayer);
 		
 	new L.Control.GeoSearch({
 		provider: new L.GeoSearch.Provider.OpenStreetMap(),
@@ -247,8 +243,8 @@ searchLac = function()
 	{
 		autoLoad = false;
 		
-		$('input:radio[name="mlsModeS"]').prop('checked', false);
-		$("#mlsModeDiv").buttonset("refresh");
+		$('input:radio[name="cvModeS"]').prop('checked', false);
+		$("#cvModeDiv").buttonset("refresh");
 		
 		var sData = data.split("&&");
 		
@@ -264,14 +260,14 @@ searchLac = function()
 			return;
 		}
 		
-		if(map.hasLayer(mlsLACPolyLayer))
-			map.removeLayer(mlsLACPolyLayer);
+		if(map.hasLayer(cvLACPolyLayer))
+			map.removeLayer(cvLACPolyLayer);
 		
-		if(map.hasLayer(mlsLACCellLayer))
-			map.removeLayer(mlsLACCellLayer);
+		if(map.hasLayer(cvLACCellLayer))
+			map.removeLayer(cvLACCellLayer);
 		
-		mlsLACPolyLayer = L.layerGroup();
-		mlsLACCellLayer = L.layerGroup();
+		cvLACPolyLayer = L.layerGroup();
+		cvLACCellLayer = L.layerGroup();
 		
 		var cData = sData[1].split("##");
 		
@@ -284,7 +280,7 @@ searchLac = function()
 		{
 			var cellData = cData[i].split("|");
 			cellData[0] = cellData[0].replace(/\s+/g, '');
-			var marker = new customMarker([parseFloat(cellData[3]), parseFloat(cellData[2]), { displayNumber: 1}])
+			var marker = new L.Marker([parseFloat(cellData[3]), parseFloat(cellData[2]), { displayNumber: 1}])
 							.setIcon(redMarkerIcon)
 							.bindPopup("<center><b>" +  cellData[0] + "<br>CID: " + cellData[1] + "</b></center><br>LAC: " + 
 									$("#sLac").val() + "<br>MNC: " + $("#sMnc").val() + "<br>MCC: " + $("#sMcc").val());
@@ -293,17 +289,19 @@ searchLac = function()
 		var polyLayer = L.geoJson(JSON.parse(sData[2])).bindPopup("<center><b>" +  cellData[0] + "</b></center><br>LAC: " + $("#sLac").val() + 
 														"<br>MNC: " + $("#sMnc").val() + "<br>MCC: " + $("#sMcc").val());
 		
-		mlsLACCellLayer.addLayer(lacMarkerCluster);
-		mlsLACPolyLayer.addLayer(polyLayer);
+		cvLACCellLayer.addLayer(lacMarkerCluster);
+		cvLACPolyLayer.addLayer(polyLayer);
 		
 		if($("#sLACcellVis").is(":checked"))
-			map.addLayer(mlsLACCellLayer);
+			map.addLayer(cvLACCellLayer);
 
-		map.addLayer(mlsLACPolyLayer);
+		map.addLayer(cvLACPolyLayer);
 		map.fitBounds(lacMarkerCluster.getBounds());
 		
-		if(map.hasLayer(mlsViewLayer))
-			map.removeLayer(mlsViewLayer);
+		if(map.hasLayer(cellViewLayer))
+			map.removeLayer(cellViewLayer);
+		if(map.hasLayer(measLayer))
+			map.removeLayer(measLayer);
 		
 		$("#loadingGif").hide();
 	});
@@ -356,9 +354,9 @@ loadCellData = function()
 	{
 		// Nothing to load.
 		$("#loadingGif").hide();
-		if(map.hasLayer(mlsViewLayer))
-			map.removeLayer(mlsViewLayer);
-		mlsLACPolyHoverLayer.clearLayers();
+		if(map.hasLayer(cellViewLayer))
+			map.removeLayer(cellViewLayer);
+		cvLACPolyHoverLayer.clearLayers();
 		return;
 	}
 	
@@ -370,7 +368,7 @@ loadCellData = function()
 	var uHash = hashString(swBounds.lat + swBounds.lng + neBounds.lat + neBounds.lng + mapZoom + radioVar + "mnc" + ageVar + paraDataSource);
 	waitingForHash = uHash;
 		
-	$.post( 'getMLS.php', {hash: uHash, latUL: swBounds.lat, lonUL: swBounds.lng, latOR: neBounds.lat, lonOR: neBounds.lng, zoom: mapZoom, radios: radioVar, nets: "mnc", mode: "mnc", ageStamp: ageVar, dataSource: paraDataSource}, function( mncData )
+	$.post( 'getData.php', {hash: uHash, latUL: swBounds.lat, lonUL: swBounds.lng, latOR: neBounds.lat, lonOR: neBounds.lng, zoom: mapZoom, radios: radioVar, nets: "mnc", mode: "mnc", ageStamp: ageVar, dataSource: paraDataSource}, function( mncData )
 	{
 		var sMncData = mncData.split("&&");
 		if((sMncData[0] == waitingForHash) || (waitingForHash != 0))
@@ -433,23 +431,23 @@ loadCellData = function()
 			if(mncVar == "")
 			{
 				// Nothing to load.
-				if(map.hasLayer(mlsViewLayer))
-					map.removeLayer(mlsViewLayer);
-				mlsLACPolyHoverLayer.clearLayers();
+				if(map.hasLayer(cellViewLayer))
+					map.removeLayer(cellViewLayer);
+				cvLACPolyHoverLayer.clearLayers();
 				$("#loadingGif").hide();
 				return;
 			}
 			
-			if($("#mlsGLac").is(":checked"))
+			if($("#cvGLac").is(":checked"))
 				modeVar = "lacSort";
 			
-			if($("#mlsHMMode").is(":checked"))
+			if($("#cvHMMode").is(":checked"))
 				modeVar = "heat";
 			
 			var uHash = hashString(swBounds.lat + swBounds.lng + neBounds.lat + neBounds.lng + modeVar + mapZoom + radioVar + mncVar + ageVar + paraDataSource);
 			waitingForHash = uHash;
 					
-			$.post( 'getMLS.php', {hash: uHash, latUL: swBounds.lat, lonUL: swBounds.lng, latOR: neBounds.lat, lonOR: neBounds.lng, mode: modeVar, zoom: mapZoom, radios: radioVar, nets: mncVar, ageStamp: ageVar, dataSource: paraDataSource}, function( data )
+			$.post( 'getData.php', {hash: uHash, latUL: swBounds.lat, lonUL: swBounds.lng, latOR: neBounds.lat, lonOR: neBounds.lng, mode: modeVar, zoom: mapZoom, radios: radioVar, nets: mncVar, ageStamp: ageVar, dataSource: paraDataSource}, function( data )
 			{
 				var sData = data.split("&&");
 				if(sData.length == 2)
@@ -463,11 +461,13 @@ loadCellData = function()
 					if(sData[0] == waitingForHash)
 						waitingForHash = 0;
 				
-					if(map.hasLayer(mlsViewLayer))
-						map.removeLayer(mlsViewLayer);
-					mlsLACPolyHoverLayer.clearLayers();
+					if(map.hasLayer(measLayer))
+						map.removeLayer(measLayer);
+					if(map.hasLayer(cellViewLayer))
+						map.removeLayer(cellViewLayer);
+					cvLACPolyHoverLayer.clearLayers();
 				
-					mlsViewLayer = L.layerGroup();
+					cellViewLayer = L.layerGroup();
 					
 					var mlsMarkerCluster;
 					var cData = sData[2].split("##");
@@ -506,10 +506,37 @@ loadCellData = function()
 						{
 							var clusterData = cData[i].split("|");
 							
-							var marker = new customMarker([parseFloat(clusterData[6]), parseFloat(clusterData[5])], {displayNumber: 1})
+							var marker = new L.Marker([parseFloat(clusterData[6]), parseFloat(clusterData[5])], {displayNumber: 1, mcc: clusterData[1], net: clusterData[2], area: clusterData[3], cid: clusterData[4], radio: clusterData[0].trim()})
 								.bindPopup("<center><b>" +  clusterData[0] + "</b></center><br>MCC: " + clusterData[1] + 
 										"<br>MNC: " + clusterData[2] + "<br>LAC: " + clusterData[3] + 
-										"<br>CID: " + clusterData[4]).setIcon(greenMarkerIcon);
+										"<br>CID: " + clusterData[4]).setIcon(greenMarkerIcon)
+								.on('click', function(e) {
+									if (paraDataSource == "ocid")
+									{
+										// Get meas Data
+										$.post( 'getMeasData.php', {mcc: this.options.mcc, net: this.options.net, area: this.options.area, cid: this.options.cid, radio: this.options.radio}, function( measData )
+										{
+											var mData = measData.split("&&");
+											if(mData.length == 2)
+											{
+												alert("Error in Response: " + measData);
+												return;
+											}
+											for (var i = 0; i < (cData.length - 1); i++)
+											{
+												var sMeasData = mData[i].split("|");
+												var marker = new L.Marker([parseFloat(sMeasData[1]), parseFloat(sMeasData[0])]);
+												
+												if(map.hasLayer(measLayer))
+													map.removeLayer(measLayer);
+												
+												measLayer = L.layerGroup();
+												measLayer.addLayer(marker);
+												map.addLayer(measLayer);												
+											}
+										})
+									}
+								});
 							mlsMarkerCluster.addLayer(marker);
 						}
 						
@@ -547,7 +574,7 @@ loadCellData = function()
 							var clusterData = cData[i].split("|");
 							if(clusterData[2] != 0)
 							{
-								var marker = new customMarker([parseFloat(clusterData[0]), parseFloat(clusterData[1])], {displayNumber: parseInt(clusterData[2])});
+								var marker = new L.Marker([parseFloat(clusterData[0]), parseFloat(clusterData[1])], {displayNumber: parseInt(clusterData[2])});
 								mlsMarkerCluster.addLayer(marker);
 							}
 						}
@@ -594,38 +621,38 @@ loadCellData = function()
 													"<br>MNC: " + clusterData[2] + 
 													"<br>MCC: " + clusterData[3]);
 									
-									var marker = new customMarker([parseFloat(clusterData[6]), parseFloat(clusterData[5])], 
+									var marker = new L.Marker([parseFloat(clusterData[6]), parseFloat(clusterData[5])], 
 																	{displayNumber: parseInt(clusterData[4]), 
 																	lacPoly: polyLayer, lac: clusterData[0],
 																	mnc: clusterData[2], mcc: clusterData[3], radio: clusterData[1]})
 												.bindPopup("<center><b>LAC: " + clusterData[0] + "</b></br>Size: " + clusterData[4] + "</center>")
 												.on('click', function(e) {
-													if(map.hasLayer(mlsLACOutlineLayer))
-														map.removeLayer(mlsLACOutlineLayer);
+													if(map.hasLayer(cvLACOutlineLayer))
+														map.removeLayer(cvLACOutlineLayer);
 													
 													if(this.options.lac != selectedLac)
 													{
-														mlsLACOutlineLayer = this.options.lacPoly;
-														map.addLayer(mlsLACOutlineLayer);
+														cvLACOutlineLayer = this.options.lacPoly;
+														map.addLayer(cvLACOutlineLayer);
 														selectedLac = this.options.lac;
 													}else
 														selectedLac = undefined;
 													})
 												.on('mouseover', function (e) {
-													mlsLACPolyHoverLayer.clearLayers();
-													mlsLACPolyHoverLayer.addLayer(L.geoJson(this.options.lacPoly.toGeoJSON()));
+													cvLACPolyHoverLayer.clearLayers();
+													cvLACPolyHoverLayer.addLayer(L.geoJson(this.options.lacPoly.toGeoJSON()));
 													this.openPopup();
 													})
 												.on('mouseout', function (e) {
-													mlsLACPolyHoverLayer.clearLayers();
+													cvLACPolyHoverLayer.clearLayers();
 													this.closePopup();
 													})
 												.on('dblclick', function(e) {
-													mlsLACPolyHoverLayer.clearLayers();
-													if(map.hasLayer(mlsLACOutlineLayer))
-														map.removeLayer(mlsLACOutlineLayer);
-													mlsLACOutlineLayer = this.options.lacPoly;
-													map.addLayer(mlsLACOutlineLayer);
+													cvLACPolyHoverLayer.clearLayers();
+													if(map.hasLayer(cvLACOutlineLayer))
+														map.removeLayer(cvLACOutlineLayer);
+													cvLACOutlineLayer = this.options.lacPoly;
+													map.addLayer(cvLACOutlineLayer);
 													selectedLac = this.options.lac;
 													
 													// Zoom to LAC (-> LAC Search)
@@ -642,8 +669,7 @@ loadCellData = function()
 							}
 						}
 					}else if (sData[1] == "heat")
-					{	
-						
+					{		
 						var latlngArray = new Array(cData.length - 1);
 						var maxValue = 1;
 							
@@ -660,7 +686,6 @@ loadCellData = function()
 						var mZoom = mapZoom;
 						if(maxValue == 1)
 						{
-							
 							var compVar = paraHMDynamicCompareModifier*Math.pow(18-mZoom, 2);
 							if(cData.length < compVar)
 								maxValue = (1-paraHMDynamicValueModifier) + paraHMDynamicValueModifier*cData.length/compVar;
@@ -670,13 +695,13 @@ loadCellData = function()
 							maxValue /= paraHMClusteredMaxDivider;
 						
 						var heatLayer = L.heatLayer(latlngArray, {max: maxValue, blur: paraHMBlur, radius: paraHMRadius, maxZoom: mZoom});
-						mlsViewLayer.addLayer(heatLayer);
+						cellViewLayer.addLayer(heatLayer);
 						
 					}else alert("Error in Response: " + data);
 					
 					if(typeof mlsMarkerCluster !== 'undefined')
-						mlsViewLayer.addLayer(mlsMarkerCluster);
-					map.addLayer(mlsViewLayer);
+						cellViewLayer.addLayer(mlsMarkerCluster);
+					map.addLayer(cellViewLayer);
 					
 					$("#loadingGif").hide();
 				}
@@ -735,7 +760,7 @@ $(document).ready(function()
 	
 	$("#searchDiv").hide();
 	
-	$("#mlsModeDiv").buttonset();
+	$("#cvModeDiv").buttonset();
 	$("#typeSelectDiv").buttonset();
 	$("#mncSelectDiv").buttonset();
 	
@@ -794,8 +819,8 @@ $(document).ready(function()
 										return;
 									}
 									
-									if(map.hasLayer(mlsCellLayer))
-										map.removeLayer(mlsCellLayer);
+									if(map.hasLayer(csCellLayer))
+										map.removeLayer(csCellLayer);
 										
 									var lonlat = data.split("|");
 									
@@ -805,9 +830,9 @@ $(document).ready(function()
 										return;
 									}
 									
-									mlsCellLayer = L.marker([parseFloat(lonlat[1]), parseFloat(lonlat[0])]);
+									csCellLayer = L.marker([parseFloat(lonlat[1]), parseFloat(lonlat[0])]);
 									
-									map.addLayer(mlsCellLayer);
+									map.addLayer(csCellLayer);
 									map.panTo(new L.LatLng(parseFloat(lonlat[1]), parseFloat(lonlat[0])));
 									map.setZoom(15);
 								});
@@ -975,16 +1000,16 @@ $(document).ready(function()
 		}
 	});
 	
-	$('input:radio[name="mlsModeS"]').change(function(){
+	$('input:radio[name="cvModeS"]').change(function(){
 		autoLoad = true;
 		if(autoLoad)
 			loadCellData();
-		if(map.hasLayer(mlsLACOutlineLayer))
-			map.removeLayer(mlsLACOutlineLayer);
-		if(map.hasLayer(mlsLACCellLayer))
-			map.removeLayer(mlsLACCellLayer);
-		if(map.hasLayer(mlsLACPolyLayer))
-			map.removeLayer(mlsLACPolyLayer);
+		if(map.hasLayer(cvLACOutlineLayer))
+			map.removeLayer(cvLACOutlineLayer);
+		if(map.hasLayer(cvLACCellLayer))
+			map.removeLayer(cvLACCellLayer);
+		if(map.hasLayer(cvLACPolyLayer))
+			map.removeLayer(cvLACPolyLayer);
 	});
 	
 	$("#settingsBtn").click(function(){
@@ -998,12 +1023,12 @@ $(document).ready(function()
 	$("#sLACcellVis").click(function(){
 		if($("#sLACcellVis").is(":checked"))
 		{
-			if(map.hasLayer(mlsLACPolyLayer))
-				map.addLayer(mlsLACCellLayer);
+			if(map.hasLayer(cvLACPolyLayer))
+				map.addLayer(cvLACCellLayer);
 		}else
 		{
-			if(map.hasLayer(mlsLACCellLayer))
-				map.removeLayer(mlsLACCellLayer);
+			if(map.hasLayer(cvLACCellLayer))
+				map.removeLayer(cvLACCellLayer);
 		}
 	});
 });

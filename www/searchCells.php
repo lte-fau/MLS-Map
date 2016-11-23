@@ -25,6 +25,15 @@ if($dataSource == "ocid")
 if($radio != "GSM" && $radio != "UMTS" && $radio != "LTE")
 	die("Invalid.");
 
+if(!is_numeric($mcc))
+	die("Invalid Parameter M.");
+if(!is_numeric($net))
+	die("Invalid Parameter N.");
+if(!is_numeric($lac))
+	die("Invalid Parameter A.");
+if(!is_numeric($cid))
+	die("Invalid Parameter C.");
+
 // Create connection
 include "../db/db-settings.php";
 $conn = pg_connect($connString)
@@ -49,16 +58,14 @@ if($type == 'cell')
 		$res = "MULTIPLE";
 	else
 		$res = "NONE";
-}
-
-if($type == 'lac')
+} else if($type == 'lac')
 {
 	$sql = "SELECT radio, cell, ST_X(pos), ST_Y(pos) FROM $mainTableName WHERE mcc = $mcc AND net = $mnc AND area = $lac AND radio = '$radio';";
 	$result = pg_query($conn, $sql);
 
 	if (!$result) {
-	  echo "An error occurred while reading Data1.";
-	  exit;
+		echo "An error occurred while reading Data1.";
+		exit;
 	}
 	
 	if(pg_num_rows($result) > 0)
@@ -72,11 +79,12 @@ if($type == 'lac')
 	$sql = "SELECT ST_AsGeoJSON(ST_CONVEXHULL(ST_COLLECT(pos))) FROM $mainTableName WHERE mcc = $mcc AND net = $mnc AND area = $lac AND radio = '$radio' GROUP BY mcc, net, area, radio;";
 	$result = pg_query($conn, $sql);
 	if (!$result) {
-	  echo "An error occurred while reading Data2.";
-	  exit;
+		echo "An error occurred while reading Data2.";
+		exit;
 	}
 	$res .= "&&" . pg_fetch_result($result, 0, 0);
-}
+} else
+	die("Invalid Parameters");
 
 pg_close($conn);
 echo $res;

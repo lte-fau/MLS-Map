@@ -6,7 +6,7 @@
 
 /*
 	MODIFIED FROM ORIGINAL:
-	Markers MUST have a "displayNumber" Option. The Value is used for weighting markers. AD
+	Markers can have a "displayNumber" Option. The Value is used for weighting markers. AD
 	"weight" option added to clusters
 */
 
@@ -1378,6 +1378,9 @@ L.MarkerCluster = L.Marker.extend({
 			childLatLng = markers[i]._latlng;
 
 			this._bounds.extend(childLatLng);
+			
+			if($.isNumeric(markers[i].options.displayNumber) === false)
+				markers[i].options.displayNumber = 1;
 			
 			wDivider += markers[i].options.displayNumber;
 

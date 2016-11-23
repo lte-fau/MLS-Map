@@ -5,7 +5,7 @@
 include "secure.php";
 $res = "";
 
-$file = fopen("log.txt","r");
+$file = fopen("tmp/log.txt","r");
 if($file != false)
 {
 	while(!feof($file))

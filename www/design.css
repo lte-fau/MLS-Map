@@ -96,11 +96,11 @@ h2{
 }
 
 /*--- Mode Selector --- */
-#mlsModeDiv{
+#cvModeDiv{
 	clear: both;
 	margin: 3px;
 }
-#mlsModeDiv label {
+#cvModeDiv label {
 	width: 160px;
 	margin-left: 10px;
 }
