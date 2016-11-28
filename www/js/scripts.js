@@ -807,7 +807,7 @@ $(document).ready(function()
 							else
 							{
 								$.post( 'searchCells.php', { type: 'cell', mcc: $("#sMcc").val(), mnc: $("#sMnc").val()
-													   , lac: $("#sLac").val(), cid: $("#sId").val(), radio: $("#sRadio").val()}, function( data )
+													   , lac: $("#sLac").val(), cid: $("#sId").val(), radio: $("#sRadio").val(), dataSource: paraDataSource}, function( data )
 								{
 									if(data == "MULTIPLE")
 									{
@@ -832,6 +832,8 @@ $(document).ready(function()
 									
 									csCellLayer = L.marker([parseFloat(lonlat[1]), parseFloat(lonlat[0])]);
 									
+									autoLoad = false;
+									
 									map.addLayer(csCellLayer);
 									map.panTo(new L.LatLng(parseFloat(lonlat[1]), parseFloat(lonlat[0])));
 									map.setZoom(15);
@@ -842,6 +844,9 @@ $(document).ready(function()
 					{
 						text: "Close",
 						click: function() {
+							autoLoad = true;
+							if(map.hasLayer(csCellLayer))
+								map.removeLayer(csCellLayer);
 							$("#searchDialog").dialog("close");
 						}
 					}

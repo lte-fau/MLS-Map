@@ -71,7 +71,6 @@ file_put_contents($logfilename, date("[Y-m-d H:i:s] ") . "All done! Starting Mea
 echo "All done! Starting MeasDbBuilder..\n";
 
 // Create connection
-include "db-settings.php";
 $conn = pg_connect($connString . " sslmode=disable")
 	or die('Could not connect: ' . pg_last_error());
 

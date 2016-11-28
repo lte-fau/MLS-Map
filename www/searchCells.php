@@ -27,7 +27,7 @@ if($radio != "GSM" && $radio != "UMTS" && $radio != "LTE")
 
 if(!is_numeric($mcc))
 	die("Invalid Parameter M.");
-if(!is_numeric($net))
+if(!is_numeric($mnc))
 	die("Invalid Parameter N.");
 if(!is_numeric($lac))
 	die("Invalid Parameter A.");
@@ -41,7 +41,7 @@ $conn = pg_connect($connString)
 	
 if($type == 'cell')
 {
-	$sql = "SELECT ST_X(pos), ST_Y(pos) FROM $mainTableName WHERE mcc = $mcc AND net = $mnc AND area = $lac AND cell = $cid AND radio = $radio;";
+	$sql = "SELECT ST_X(pos), ST_Y(pos) FROM $mainTableName WHERE mcc = $mcc AND net = $mnc AND area = $lac AND cell = $cid AND radio = '$radio'";
 	$result = pg_query($conn, $sql);
 
 	if (!$result) {
