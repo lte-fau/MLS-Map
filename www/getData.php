@@ -132,7 +132,6 @@ if($mode == "cell")
 	
 	$sql = "SELECT radio, mcc, net, area, cell, ST_X(pos), ST_Y(pos) FROM $mainTableName WHERE pos && ST_MakeEnvelope (
 					$lonUL, $latUL, $lonOR, $latOR, 4326) AND radio IN ($inStringRadio) $inStringNet $inStringTime;";
-	
 	$result = pg_query($conn, $sql);
 	
 	if (!$result) {

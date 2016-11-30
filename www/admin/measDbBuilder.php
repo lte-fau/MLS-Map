@@ -98,7 +98,7 @@ $result = pg_query($conn, "CREATE TEMPORARY TABLE $tempTableName(
 	rating real,
 	speed real,
 	direction real,
-	radio char(5),
+	radio text,
 	ta integer,
 	rnc integer,
 	cid integer,
@@ -172,7 +172,7 @@ if($mergeData == 0)
 	rating real,
 	speed real,
 	direction real,
-	radio char(5),
+	radio text,
 	ta integer,
 	rnc integer,
 	cid integer,
@@ -238,9 +238,9 @@ if (!$result) {
 file_put_contents($logfilename, date("[Y-m-d H:i:s] ") . "Creating info table..\n", FILE_APPEND);
 echo "Creating info table..\n";
 $result = pg_query($conn, "CREATE TABLE IF NOT EXISTS $generalTableName(
-	para char(50) NOT NULL, 
+	para text NOT NULL, 
 	time timestamp, 
-	sInfo char(50),
+	sInfo text,
 	iInfo integer,
 	eInfo integer,
 	PRIMARY KEY (para))");

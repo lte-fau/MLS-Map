@@ -522,10 +522,10 @@ loadCellData = function()
 												alert("Error in Response: " + measData);
 												return;
 											}
-											for (var i = 0; i < (cData.length - 1); i++)
+											for (var i = 1; i < (mData.length - 1); i++)
 											{
 												var sMeasData = mData[i].split("|");
-												var marker = new L.Marker([parseFloat(sMeasData[1]), parseFloat(sMeasData[0])]);
+												var marker = new L.Marker([parseFloat(sMeasData[1]), parseFloat(sMeasData[0])], title: (parseFloat(sMeasData[3]) + "dBm"));
 												
 												if(map.hasLayer(measLayer))
 													map.removeLayer(measLayer);

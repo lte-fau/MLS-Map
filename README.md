@@ -76,6 +76,22 @@ For Mozilla Location Service, a download link to a full cell export is required.
 
 For OpenCellID, the API-Key from  _db-settings.php_ is used to download the newest export.
 
+##### 3.: Postgres should be configured to optimize performance.
+The following is an example, optimal settings will most likely be different.
+Code must be run as superuser.
+
+```sql
+ALTER SYSTEM SET random_page_cost = 1.5; 			// Default 4
+ALTER SYSTEM SET shared_buffers = "2GB"; 			// 1/4 of RAM, Default 128MB
+ALTER SYSTEM SET effective_cache_size = "5GB";		// Default 4GB
+
+ALTER SYSTEM SET work_mem = "16MB";					// Default 4MB
+ALTER SYSTEM SET maintenance_work_mem = "512MB";	// Default 64MB
+
+ALTER SYSTEM SET max_wal_size = "2GB";				// Default 1GB
+ALTER SYSTEM SET checkpoint_completion_target = 0.8;// Default 0.5
+```
+
 ## Third-party modules
 
 Leaflet 0.7.7

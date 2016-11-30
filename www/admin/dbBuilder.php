@@ -1,8 +1,9 @@
 <?php
 /* Copyright (C) 2016  Lehrstuhl für Technische Elektronik, Friedrich-Alexander-Universität Erlangen-Nürnberg */
 /* https://github.com/lte-fau/MLS-Map/blob/master/LICENSE */
-//include "secure.php";
+include "local.php";
 include "db-settings.php";
+include "logHelper.php";
 
 if($argv[1] == "ocid")
 {
@@ -126,7 +127,7 @@ pg_query($conn, "DROP TABLE IF EXISTS $tempImportName");
 pg_query($conn, "BEGIN");
 
 $result = pg_query($conn, "CREATE UNLOGGED TABLE $tempImportName(
-	radio char(5),
+	radio text,
 	mcc smallint, 
 	net smallint,
 	area integer,
@@ -156,11 +157,11 @@ if (!$result) {
 pg_query($conn, "COMMIT");
 
 writeLog("Deleting extracted file..\n");
-unlink($srcFileName);
+unlink("tmp/" . $srcFileName);
 
 writeLog("Creating main table..\n");
 $result = pg_query($conn, "CREATE UNLOGGED TABLE $tempTableName(
-	radio char(10),
+	radio text,
 	mcc smallint, 
 	net smallint,
 	area integer,
@@ -228,7 +229,7 @@ if (!$result) {
 
 writeLog("Creating LAC Table..\n");
 $sql = "CREATE TABLE $tempLacTableName(
-	radio char(10),
+	radio text,
 	mcc smallint, 
 	net smallint,
 	area integer,
@@ -318,9 +319,9 @@ if (!$result) {
 
 writeLog("Creating info table..\n");
 $result = pg_query($conn, "CREATE TABLE IF NOT EXISTS $generalTableName(
-	para char(50) NOT NULL, 
+	para text NOT NULL, 
 	time timestamp, 
-	sInfo char(50),
+	sInfo text,
 	iInfo integer,
 	eInfo integer,
 	PRIMARY KEY (para))");
