@@ -4,7 +4,8 @@
 
 function writeLog($str)
 {
-	file_put_contents("tmp/log.txt", date("[Y-m-d H:i:s] ") . $str, FILE_APPEND);
-    echo date("[Y-m-d H:i:s] ") . $str;
+	$str = date("[Y-m-d H:i:s] ") . $str . "\n";
+	file_put_contents("tmp/log.txt", $str, FILE_APPEND);
+    echo $str;
 }
 ?>

@@ -60,14 +60,16 @@ $mtime = explode(" ",$mtime);
 $mtime = $mtime[1] + $mtime[0]; 
 $starttime = $mtime; 
 
-writeLog("<br>*******************************************\n");
-writeLog("******* Starting dbBuilder for $argv[1] *******\n");
-writeLog("*******************************************\n<br>");
+writeLog("");
+writeLog("*******************************************");
+writeLog("******* Starting dbBuilder for $argv[1] *******");
+writeLog("*******************************************");
+writeLog("");
 
-writeLog("Downloading datafile..\n");
+writeLog("Downloading datafile..");
 file_put_contents($fileName, fopen("$dataURL", 'r'));
 
-writeLog("Extracting file..\n");
+writeLog("Extracting file..");
 $buffer_size = 1048576; // 1MiB
 $outputFileName = str_replace('.gz', '', $fileName); 
 $srcFileName = $outputFileName;
@@ -87,7 +89,7 @@ gzclose($file);
 
 if($argv[1] == "mls")
 {
-	writeLog("Removing carriage return characters..\n");
+	writeLog("Removing carriage return characters..");
 	
 	$file_read = fopen($outputFileName, "r");
 	$outputFileName = str_replace('tmp/', '', $outputFileName); 
@@ -109,15 +111,15 @@ if($argv[1] == "mls")
 
 $srcFileName = str_replace('tmp/', '', $outputFileName); 
 
-writeLog("All done! Starting DbBuilder..\n");
+writeLog("All done! Starting DbBuilder..");
 
 // Create connection
 $conn = pg_connect($connString . " sslmode=disable")
 	or die('Could not connect: ' . pg_last_error());
 
-writeLog("Connected to database successfully.\n");
+writeLog("Connected to database successfully.");
 
-writeLog("Creating bulk-import table..\n");
+writeLog("Creating bulk-import table..");
 pg_query($conn, "DROP TABLE IF EXISTS $tempTableName");
 pg_query($conn, "DROP TABLE IF EXISTS $tempLacTableName");
 
@@ -142,24 +144,24 @@ $result = pg_query($conn, "CREATE UNLOGGED TABLE $tempImportName(
 	updated bigint,
 	averagesignal smallint)");
 if (!$result) {
-	writeLog("An error occurred during Table creation.\n");
+	writeLog("An error occurred during Table creation.");
 	exit;
 }
 
-writeLog("Importing Data..\n");
+writeLog("Importing Data..");
 $result = pg_query($conn, "SELECT import_csv_file_to_table('$tempImportName', '$srcFileName')");
 if (!$result) {
-	writeLog("Importing Data..\n");
-	file_put_contents($logfilename, date("[Y-m-d H:i:s] ") . "An error occurred during Bulk import.\n", FILE_APPEND);
-	echo "An error occurred during Bulk import.\n";
+	writeLog("Importing Data..");
+	file_put_contents($logfilename, date("[Y-m-d H:i:s] ") . "An error occurred during Bulk import.", FILE_APPEND);
+	echo "An error occurred during Bulk import.";
 	exit;
 }
 pg_query($conn, "COMMIT");
 
-writeLog("Deleting extracted file..\n");
+writeLog("Deleting extracted file..");
 unlink("tmp/" . $srcFileName);
 
-writeLog("Creating main table..\n");
+writeLog("Creating main table..");
 $result = pg_query($conn, "CREATE UNLOGGED TABLE $tempTableName(
 	radio text,
 	mcc smallint, 
@@ -175,59 +177,59 @@ $result = pg_query($conn, "CREATE UNLOGGED TABLE $tempTableName(
 	updated bigint,
 	averagesignal smallint)");
 if (!$result) {
-	writeLog("An error occurred during Table creation.\n");
+	writeLog("An error occurred during Table creation.");
 	exit;
 }
 
-writeLog("Populating main table..\n");	
+writeLog("Populating main table..");	
 $sql = "INSERT INTO $tempTableName SELECT DISTINCT ON (net, radio, area, mcc, cell) radio, mcc, net, area, cell, unit,
 	ST_SetSRID(ST_MakePoint(lon, lat), 4326) As pos,
 	range, samples, changeable, created, updated, averagesignal
 	FROM $tempImportName";
 $result = pg_query($conn, $sql);	
 if (!$result) {
-	writeLog("Error populating main table.\n");
+	writeLog("Error populating main table.");
 	exit;
 }
 
-writeLog("Creating primary key..\n");
+writeLog("Creating primary key..");
 $tempTablePKey = $tempTableName . "_pkey";
 
 $result = pg_query($conn, "ALTER TABLE $tempTableName
 	ADD CONSTRAINT $tempTablePKey PRIMARY KEY (net, radio, area, mcc, cell)");
 if (!$result) {
-	writeLog("An error occurred during primary key creation.\n");
+	writeLog("An error occurred during primary key creation.");
 	exit;
 }
 
-writeLog("Creating indexes..\n");
+writeLog("Creating indexes..");
 $sql = "CREATE INDEX $tempGixName ON $tempTableName USING GIST (pos)";
 $result = pg_query($conn, $sql);
 if (!$result) {
-	writeLog("Couldn't create $tempGixName.\n");
+	writeLog("Couldn't create $tempGixName.");
 	exit;
 }
 
-writeLog("Clustering spatial index..\n");
+writeLog("Clustering spatial index..");
 $sql = "CLUSTER $tempTableName USING $tempGixName;";
 $result = pg_query($conn, $sql);
 if (!$result) {
-	writeLog("Couldn't cluster $tempGixName.\n");
+	writeLog("Couldn't cluster $tempGixName.");
 	exit;
 }
 
 // All writes done. Set table to Logged.
 pg_query($conn, "ALTER TABLE $tempTableName SET LOGGED");
 
-writeLog("Analyzing $tempTableName Table..\n");
+writeLog("Analyzing $tempTableName Table..");
 $sql = "ANALYZE $tempTableName;";
 $result = pg_query($conn, $sql);
 if (!$result) {
-	writeLog("Couldn't analyze Table.\n");
+	writeLog("Couldn't analyze Table.");
 	exit;
 }
 
-writeLog("Creating LAC Table..\n");
+writeLog("Creating LAC Table..");
 $sql = "CREATE TABLE $tempLacTableName(
 	radio text,
 	mcc smallint, 
@@ -239,11 +241,11 @@ $sql = "CREATE TABLE $tempLacTableName(
 	id SERIAL)";
 $result = pg_query($conn, $sql);
 if (!$result) {
-	writeLog("Couldn't create LAC Table.\n");
+	writeLog("Couldn't create LAC Table.");
 	exit;
 }
 
-writeLog("Populating LAC Table..\n");
+writeLog("Populating LAC Table..");
 $sql = "INSERT INTO $tempLacTableName SELECT radio, mcc, net, area, 
 	null AS cPos,
 	null AS outline,
@@ -252,21 +254,21 @@ $sql = "INSERT INTO $tempLacTableName SELECT radio, mcc, net, area,
 	GROUP BY area, radio, net, mcc";
 $result = pg_query($conn, $sql);	
 if (!$result) {
-	writeLog("Error populating LAC Database.\n");
+	writeLog("Error populating LAC Database.");
 	exit;
 }
 
-writeLog("Creating primary key..\n");
+writeLog("Creating primary key..");
 $tempLacTablePKey = $tempLacTableName . "_pkey";
 
 $result = pg_query($conn, "ALTER TABLE $tempLacTableName
 	ADD CONSTRAINT $tempLacTablePKey PRIMARY KEY (radio, net, area, mcc)");
 if (!$result) {
-	writeLog("An error occurred during primary key creation.\n");
+	writeLog("An error occurred during primary key creation.");
 	exit;
 }
 
-writeLog("Computing LAC geometry..\n");
+writeLog("Computing LAC geometry..");
 
 $i = 0;
 $stepsize = 50000;
@@ -278,46 +280,46 @@ do{
 			WHERE id BETWEEN $i AND $j";
 	$result = pg_query($conn, $sql);	
 	if (!$result) {
-		writeLog("Error Computing LAC geometry.\n");
+		writeLog("Error Computing LAC geometry.");
 		exit;
 	}
 	$i = $j;
-	writeLog("$j complete!\n");
+	writeLog("$j complete!");
 } while(pg_affected_rows($result) > 0);
 
-writeLog("Droping id column..\n");
+writeLog("Droping id column..");
 $sql = "ALTER TABLE $tempLacTableName DROP COLUMN id";
 $result = pg_query($conn, $sql);
 if (!$result) {
-	writeLog("Couldn't drop column.\n");
+	writeLog("Couldn't drop column.");
 	exit;
 }
 
-writeLog("Creating LAC index..\n");
+writeLog("Creating LAC index..");
 $sql = "CREATE INDEX $tempLacGixName ON $tempLacTableName USING GIST (cPos)";
 $result = pg_query($conn, $sql);
 if (!$result) {
-	writeLog("Couldn't create $tempLacGixName.\n");
+	writeLog("Couldn't create $tempLacGixName.");
 	exit;
 }
 
-writeLog("Clustering spatial index..\n");
+writeLog("Clustering spatial index..");
 $sql = "CLUSTER $tempLacTableName USING $tempLacGixName";
 $result = pg_query($conn, $sql);
 if (!$result) {
-	writeLog("Couldn't cluster $tempLacGixName.\n");
+	writeLog("Couldn't cluster $tempLacGixName.");
 	exit;
 }
 
-writeLog("Analyzing $tempLacTableName..\n");
+writeLog("Analyzing $tempLacTableName..");
 $sql = "ANALYZE $tempLacTableName";
 $result = pg_query($conn, $sql);	
 if (!$result) {
-	writeLog("Couldn't analyze Table.\n");
+	writeLog("Couldn't analyze Table.");
 	exit;
 }
 
-writeLog("Creating info table..\n");
+writeLog("Creating info table..");
 $result = pg_query($conn, "CREATE TABLE IF NOT EXISTS $generalTableName(
 	para text NOT NULL, 
 	time timestamp, 
@@ -327,20 +329,20 @@ $result = pg_query($conn, "CREATE TABLE IF NOT EXISTS $generalTableName(
 	PRIMARY KEY (para))");
 
 if (!$result) {
-	writeLog("An error occurred during general Table creation.\n");
+	writeLog("An error occurred during general Table creation.");
 	exit;
 }
 
-writeLog("Populating info table..\n");
+writeLog("Populating info table..");
 $sql = "INSERT INTO $generalTableName VALUES ('$infoParam', CURRENT_TIMESTAMP, '$srcFileName', null, null)
 	 ON CONFLICT (para) DO UPDATE SET time = CURRENT_TIMESTAMP, sInfo = '$srcFileName', iInfo = null, eInfo = null";
 $result = pg_query($conn, $sql);	
 if (!$result) {
-	writeLog("Couldn't create Builddate Entry.\n");
+	writeLog("Couldn't create Builddate Entry.");
 	exit;
 }
 
-writeLog("Renaming Tables..\n");
+writeLog("Renaming Tables..");
 pg_query($conn, "DROP TABLE IF EXISTS $finalTableName");
 pg_query($conn, "DROP TABLE IF EXISTS $finalLacTableName");
 
@@ -361,5 +363,5 @@ $mtime = explode(" ",$mtime);
 $mtime = $mtime[1] + $mtime[0]; 
 $endtime = $mtime; 
 $totaltime = ($endtime - $starttime); 
-writeLog("Done. Took $totaltime seconds.\n");
+writeLog("Done. Took $totaltime seconds.");
 ?>

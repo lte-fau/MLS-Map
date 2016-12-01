@@ -25,39 +25,43 @@ $mtime = explode(" ",$mtime);
 $mtime = $mtime[1] + $mtime[0]; 
 $starttime = $mtime; 
 
-writeLog("<br>*******************************************\n");
-writeLog("* Starting dbBuilder for OCIDMeasurements *\n");
-writeLog("******** Area selective, Mode = $mode *********\n");
-writeLog("*******************************************\n<br>");
+writeLog("");
+writeLog("*******************************************");
+writeLog("* Starting dbBuilder for OCIDMeasurements *");
+writeLog("******** Area selective, Mode = $mode *********");
+writeLog("*******************************************");
+writeLog("");
 
 // Create connection
 $conn = pg_connect($connString . " sslmode=disable")
 	or die('Could not connect: ' . pg_last_error());
-writeLog("Connected to database successfully.\n");
+writeLog("Connected to database successfully.");
 
 if($mode == 0 || $mode == 2)
 	$endingFileIndex++;
 if($mode == 0)
-{
 	$startingFileIndex = $endingFileIndex;
+
+if($mode == 1 || $mode == 2)
+{
 	if($dropExistingData == 1)
 	{
-		writeLog("Droping old Data..\n");
+		writeLog("Droping old Data..");
 		$sql = "ALTER TABLE ocid DROP COLUMN IF EXISTS meas";
 		$result = pg_query($conn, $sql);	
 		if (!$result) {
-			writeLog("Couldn't drop old Data.\n");
+			writeLog("Couldn't drop old Data.");
 			exit;
 		}
 	}	
 }
 
-writeLog("Checking cell Table measure column..\n");  
+writeLog("Checking cell Table measure column..");  
 
 $sql = "SELECT column_name FROM information_schema.columns WHERE table_name='ocid' and column_name='meas'";
 $result = pg_query($conn, $sql);	
 if (!$result) {
-	writeLog("Coudn't check column.\n");
+	writeLog("Coudn't check column.");
 	exit;
 }
 
@@ -80,16 +84,16 @@ for($fileIndex; $fileIndex <= $endingFileIndex; $fileIndex++)
 	if(($mode == 0 || $mode == 2) && $fileIndex == $endingFileIndex)
 	{
 		$fileName = "tmp/" . "last_measurements.csv.gz";
-		writeLog("*** Importing remote file $fileName..\n");
-		writeLog("Downloading datafile..\n");
+		writeLog("*** Importing remote file $fileName..");
+		writeLog("Downloading datafile..");
 		//file_put_contents($fileName, fopen("$dataURL", 'r'));
 	}else 
 	{
 		$fileName = $localFileName . $fileIndex . ".csv.gz";
-		writeLog("*** Importing local file $fileName..\n");
+		writeLog("*** Importing local file $fileName..");
 	}
 
-	writeLog("Extracting file..\n");
+	writeLog("Extracting file..");
 	
 	$buffer_size = 10485760; // 10MiB
 	$outputFileName = str_replace('.gz', '', $fileName); 
@@ -108,7 +112,7 @@ for($fileIndex; $fileIndex <= $endingFileIndex; $fileIndex++)
 	fclose($outputFile);
 	gzclose($file);
 	
-	writeLog("Creating temp table..\n");
+	writeLog("Creating temp table..");
 	pg_query($conn, "DROP TABLE IF EXISTS $tempTableName");
 
 	// COPY is fastest wenn done in the same transaction as CREATE TABLE
@@ -138,15 +142,15 @@ for($fileIndex; $fileIndex <= $endingFileIndex; $fileIndex++)
 				bid integer)";
 	$result = pg_query($conn, $sql);
 	if (!$result) {
-		writeLog("An error occurred during Table creation.\n");
+		writeLog("An error occurred during Table creation.");
 		exit;
 	}
 
-	writeLog("Importing Data..\n");
+	writeLog("Importing Data..");
 	$sql = "SELECT import_csv_file_to_table('$tempTableName', '$srcFileName')";
 	$result = pg_query($conn, $sql);
 	if (!$result) {
-		writeLog("An error occurred during Bulk import.\n");
+		writeLog("An error occurred during Bulk import.");
 		exit;
 	}
 	pg_query($conn, "COMMIT");
@@ -154,28 +158,28 @@ for($fileIndex; $fileIndex <= $endingFileIndex; $fileIndex++)
 	// Delete unpacked file
 	unlink("tmp/" . $srcFileName);
 
-	writeLog("Deleting unwated entries..\n"); 
-	$sql = "DELETE FROM $tempTableName WHERE lon < 10.728836059570312 OR lon > 11.40380859375 OR lat < 49.26197951930051 OR lat > 49.685401019041414";
+	writeLog("Deleting unwated entries.."); 
+	$sql = "DELETE FROM $tempTableName WHERE lon < 10.5 OR lon > 11.7 OR lat < 48.9 OR lat > 49.9";
 	$result = pg_query($conn, $sql);	
 	if (!$result) {
-		writeLog("Coudn't delete entries.\n");
+		writeLog("Coudn't delete entries.");
 		exit;
 	}
 	
-	writeLog("Merging data into cellTable..\n");		
-	$sql = "UPDATE ocid t1 SET meas = ST_Multi(ST_Union(meas, atm.cMeas))
-				FROM (SELECT ST_Collect(ST_SetSRID(ST_MakePoint(lon, lat, signal), 4326)) AS cMeas, mcc, net, area, cell FROM $tempTableName GROUP BY mcc, net, area, cell) atm
-				WHERE t1.mcc = atm.mcc AND t1.net = atm.net AND t1.area = atm.area AND t1.cell = atm.cell"; // AND t1.radio = atm.radio 
+	writeLog("Merging data into cellTable..");		
+	$sql = "UPDATE ocid t1 SET meas = ST_Multi(ST_CollectionHomogenize(ST_Collect(meas, atm.cMeas)))
+				FROM (SELECT ST_Collect(ST_SetSRID(ST_MakePoint(lon, lat, signal), 4326)) AS cMeas, mcc, net, area, cell, radio FROM $tempTableName GROUP BY mcc, net, area, cell, radio) atm
+				WHERE t1.mcc = atm.mcc AND t1.net = atm.net AND t1.area = atm.area AND t1.cell = atm.cell AND t1.radio = atm.radio";
 	$result = pg_query($conn, $sql);
 	if (!$result) {
-		writeLog("Couldn't merge Data.\n");
+		writeLog("Couldn't merge Data.");
 		exit;
 	}
 
 	pg_query($conn, "DROP TABLE IF EXISTS $tempTableName");
 }
 
-writeLog("Creating info table..\n");
+writeLog("Creating info table..");
 $sql = "CREATE TABLE IF NOT EXISTS $generalTableName(
 			para text NOT NULL,
 			time timestamp,
@@ -185,16 +189,16 @@ $sql = "CREATE TABLE IF NOT EXISTS $generalTableName(
 			PRIMARY KEY (para))";
 $result = pg_query($conn, $sql);
 if (!$result) {
-	writeLog("An error occurred during general Table creation.\n");
+	writeLog("An error occurred during general Table creation.");
 	exit;
 }
 
-writeLog("Populating info table..\n");
+writeLog("Populating info table..");
 $sql = "INSERT INTO $generalTableName VALUES ('$infoParam', CURRENT_TIMESTAMP, '$srcFileName', null, null)
 		ON CONFLICT (para) DO UPDATE SET time = CURRENT_TIMESTAMP, sInfo = '$startingFileIndex - $endingFileIndex', iInfo = $mode, eInfo = null";
 $result = pg_query($conn, $sql);	
 if (!$result) {
-	writeLog("Couldn't create Builddate Entry.\n");
+	writeLog("Couldn't create Builddate Entry.");
 	exit;
 }
 
@@ -205,5 +209,5 @@ $mtime = explode(" ",$mtime);
 $mtime = $mtime[1] + $mtime[0]; 
 $endtime = $mtime; 
 $totaltime = ($endtime - $starttime); 
-writeLog("Done. Took $totaltime seconds.\n");
+writeLog("Done. Took $totaltime seconds.");
 ?>

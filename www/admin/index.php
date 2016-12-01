@@ -1,3 +1,4 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <?php
 /* Copyright (C) 2016  Lehrstuhl für Technische Elektronik, Friedrich-Alexander-Universität Erlangen-Nürnberg */
 /* https://github.com/lte-fau/MLS-Map/blob/master/LICENSE */
@@ -17,7 +18,7 @@ if(isset($_GET['login']))
 	$result = pg_query($conn, $sql);
 
 	if (!$result) {
-		$result = pg_query($conn, "CREATE TABLE admins(username char(50) NOT NULL, password varchar(255) NOT NULL, PRIMARY KEY (username))");
+		$result = pg_query($conn, "CREATE TABLE admins(username text NOT NULL, password text NOT NULL, PRIMARY KEY (username))");
 			
 		if (!$result) {
 			echo "An error occurred during Table creation.\n";
@@ -65,7 +66,6 @@ if(isset($_SESSION['userid']))
 }
 ?>
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html>
 <head>
 	<title>MapView Adm</title>
