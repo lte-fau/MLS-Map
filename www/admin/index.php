@@ -71,6 +71,8 @@ if(isset($_SESSION['userid']))
 	<title>MapView Adm</title>
 	<meta charset="UTF-8">
 	
+	<link rel=icon href="../favicon.png">
+	
 	<link rel="stylesheet" href="../jquery-ui/jquery-ui.min.css" />
 	<link rel="stylesheet" href="adminDesign.css" />
 	

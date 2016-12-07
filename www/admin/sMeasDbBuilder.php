@@ -6,11 +6,20 @@ include "db-settings.php";
 include "logHelper.php";
 
 //__________Params___________
-$mode = 1; 						// Mode0 -> Merge last_measurements, Mode1 -> Create Database from local files, Mode2 -> Both
-$startingFileIndex = 1;			// First local filenumber witch to import
-$endingFileIndex = 15;			// Last local filenumber witch to import
-$dropExistingData = 1;			// Only dropped if importing local files
-$localFileName = "tmp/measurements_"; // A number and .csv.gz will be added later
+$mode = 1; 								// Mode0 -> Merge last_measurements, Mode1 -> Create Database from local files, Mode2 -> Both
+$startingFileIndex = 1;					// First local filenumber witch to import
+$endingFileIndex = 15;					// Last local filenumber witch to import
+$dropExistingData = 1;					// Only dropped if importing local files
+$localFileName = "tmp/measurements_";	// A number and .csv.gz will be added later
+
+$filterMode = 1;						// 0 -> No filtering, 1 -> Filter by Cords, 2 -> Filter by MCC
+$filterMcc = 262;
+$UpperLonLimit = 11.9;
+$LowerLonLimit = 10.3;
+$UpperLatLimit = 50.2;
+$LowerLatLimit = 48.6;
+
+// Importing last_measurements multiple times results in the same measurements showing up multiple times. Last measurement flag? Or use only numbered files (-> One month old data)
 
 $tempTableName = "tempmeas";
 $generalTableName = "gInfo";
@@ -20,10 +29,10 @@ $infoParam = "MEAS_UPDATE_DATE";
 $dataURL = "http://opencellid.org/downloads/?apiKey=" . $ocidAPIKey . "&filename=last_measurements.csv.gz";
 //___________________________
 
-$mtime = microtime(); 
-$mtime = explode(" ",$mtime); 
-$mtime = $mtime[1] + $mtime[0]; 
-$starttime = $mtime; 
+$mtime = microtime();
+$mtime = explode(" ",$mtime);
+$mtime = $mtime[1] + $mtime[0];
+$starttime = $mtime;
 
 writeLog("");
 writeLog("*******************************************");
@@ -86,7 +95,7 @@ for($fileIndex; $fileIndex <= $endingFileIndex; $fileIndex++)
 		$fileName = "tmp/" . "last_measurements.csv.gz";
 		writeLog("*** Importing remote file $fileName..");
 		writeLog("Downloading datafile..");
-		//file_put_contents($fileName, fopen("$dataURL", 'r'));
+		file_put_contents($fileName, fopen("$dataURL", 'r'));
 	}else 
 	{
 		$fileName = $localFileName . $fileIndex . ".csv.gz";
@@ -157,13 +166,19 @@ for($fileIndex; $fileIndex <= $endingFileIndex; $fileIndex++)
 	
 	// Delete unpacked file
 	unlink("tmp/" . $srcFileName);
-
-	writeLog("Deleting unwated entries.."); 
-	$sql = "DELETE FROM $tempTableName WHERE lon < 10.5 OR lon > 11.7 OR lat < 48.9 OR lat > 49.9";
-	$result = pg_query($conn, $sql);	
-	if (!$result) {
-		writeLog("Coudn't delete entries.");
-		exit;
+	
+	if($filterMode != 0)
+	{
+		writeLog("Deleting unwated entries.."); 
+		if($filterMode == 1)
+			$sql = "DELETE FROM $tempTableName WHERE lon < $LowerLonLimit OR lon > $UpperLonLimit OR lat < $LowerLatLimit OR lat > $UpperLatLimit";
+		else
+			$sql = "DELETE FROM $tempTableName WHERE mcc <> $filterMcc";
+		$result = pg_query($conn, $sql);	
+		if (!$result) {
+			writeLog("Coudn't delete entries.");
+			exit;
+		}
 	}
 	
 	writeLog("Merging data into cellTable..");		

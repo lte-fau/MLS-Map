@@ -51,14 +51,13 @@ if($argv[1] == "ocid")
 	
 	$dataURL = $argv[2];
 	//___________________________
-}else{
+}else
 	exit;
-}
 
-$mtime = microtime(); 
-$mtime = explode(" ",$mtime); 
-$mtime = $mtime[1] + $mtime[0]; 
-$starttime = $mtime; 
+$mtime = microtime();
+$mtime = explode(" ",$mtime);
+$mtime = $mtime[1] + $mtime[0];
+$starttime = $mtime;
 
 writeLog("");
 writeLog("*******************************************");
@@ -343,6 +342,7 @@ if (!$result) {
 }
 
 writeLog("Renaming Tables..");
+pg_query($conn, "DROP TABLE IF EXISTS $tempImportName");
 pg_query($conn, "DROP TABLE IF EXISTS $finalTableName");
 pg_query($conn, "DROP TABLE IF EXISTS $finalLacTableName");
 

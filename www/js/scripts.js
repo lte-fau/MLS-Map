@@ -34,24 +34,27 @@ var paraAJAXTimeout = 5000;
 
 //____ Vars ____
 var map;
+var osmLayer;
+var osmLayer;
 
-var cellViewLayer;
+var cellViewLayer;									// Main data layer 
 var selectedLac;
 
 var cvLACOutlineLayer;
-var cvLACCellLayer;
-var cvLACPolyLayer;
 var cvLACPolyHoverLayer = new L.layerGroup();
-var csCellLayer;
 
-var measLayer;
+var sLACCellLayer;									// LAC search cell layer
+var sLACPolyLayer;									// Lac search poly layer
+var sCellLayer;										// Cell search layer
+
+var measLayer;										// Measurement data layer
 
 var autoLoad = true;
 var cellReqIsQueued = false;
+var timeoutHandle;
 
-//Ajax responce is only loaded, if the newest request hasn't been answered. This prevents older but slower responces of overwriting newer Data
+//Ajax responce is only loaded if the newest request hasn't been answered. This prevents older but slower responces of overwriting newer Data
 var waitingForHash = 0;
-
 
 var greenMarkerIcon = L.icon({
 	iconUrl: 'leaflet/images/markerGreen.png',
@@ -77,6 +80,7 @@ var lacMarkerIcon = L.icon({
 	iconAnchor: [12, 13],
 	popupAnchor: [1, -20]
 });
+
 
 loadFromCookie = function()
 {
@@ -182,7 +186,8 @@ deleteCookie = function()
 }
 
 // Function to create simple hash
-function hashString (str){
+function hashString(str)
+{
     var hash = 0;
     if (str.length == 0) return hash;
 	
@@ -193,59 +198,44 @@ function hashString (str){
     }
     return hash;
 }
-	
-initMap = function()
+
+function stopCellView()
 {
-	var osmLayer = L.tileLayer('http://{s}.tile.openstreetmap.de/tiles/osmde/{z}/{x}/{y}.png', {
-		attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, ' + 
-			' <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>',
-		maxZoom: 18,
-		minZoom: 2,
-	});
+	autoLoad = false;
 	
-	var otmLayer = L.tileLayer('http://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
-		attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, Tiles:  &copy; <a href="http://opentopomap.org">OpenTopoMap</a>' + 
-			' <a href="http://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>',
-		maxZoom: 18,
-		minZoom: 2,
-	});
+	$('input:radio[name="cvModeS"]').prop('checked', false);
+	$("#cvModeDiv").buttonset("refresh");
 	
-	map = L.map('map', {
-		center: [49.574, 11.0294],
-		zoom: 14,
-		layers: [osmLayer, otmLayer]
-	});
-	
-	var baseMaps = {
-		"OpenStreetMap": osmLayer,
-		"OpenTopoMap": otmLayer
-	};
-	
-	map.removeLayer(otmLayer);
-	
-	L.control.layers(baseMaps).addTo(map);
-	map.addLayer(cvLACPolyHoverLayer);
-		
-	new L.Control.GeoSearch({
-		provider: new L.GeoSearch.Provider.OpenStreetMap(),
-		position: 'topleft',
-	}).addTo(map);
-	
-	L.control.scale({
-		position: 'topleft',
-		maxWidth: 150}).addTo(map);
+	clearMap();
 }
 
-searchLac = function()
+function clearMap()
+{	
+	if(map.hasLayer(cellViewLayer))
+		map.removeLayer(cellViewLayer);
+	cvLACPolyHoverLayer.clearLayers();
+	
+	if(map.hasLayer(cvLACOutlineLayer) && !autoLoad)
+		map.removeLayer(cvLACOutlineLayer);
+	
+	if(map.hasLayer(sLACCellLayer))
+		map.removeLayer(sLACCellLayer);
+	if(map.hasLayer(sLACPolyLayer))
+		map.removeLayer(sLACPolyLayer);
+	if(map.hasLayer(sCellLayer))
+		map.removeLayer(sCellLayer);
+	
+	if(map.hasLayer(measLayer))
+		map.removeLayer(measLayer);	
+}
+
+function searchLac()
 {
 	$("#loadingGif").show();
 	$.post( 'searchCells.php', { type: 'lac', mcc: $("#sMcc").val(), mnc: $("#sMnc").val(), lac: $("#sLac").val(), radio: $("#sRadio").val(), dataSource: paraDataSource}, function( data )
 	{
-		autoLoad = false;
-		
-		$('input:radio[name="cvModeS"]').prop('checked', false);
-		$("#cvModeDiv").buttonset("refresh");
-		
+		stopCellView();
+
 		var sData = data.split("&&");
 		
 		if(sData.length == 1)
@@ -260,14 +250,8 @@ searchLac = function()
 			return;
 		}
 		
-		if(map.hasLayer(cvLACPolyLayer))
-			map.removeLayer(cvLACPolyLayer);
-		
-		if(map.hasLayer(cvLACCellLayer))
-			map.removeLayer(cvLACCellLayer);
-		
-		cvLACPolyLayer = L.layerGroup();
-		cvLACCellLayer = L.layerGroup();
+		sLACPolyLayer = L.layerGroup();
+		sLACCellLayer = L.layerGroup();
 		
 		var cData = sData[1].split("##");
 		
@@ -279,70 +263,141 @@ searchLac = function()
 		for (var i = 0; i < cData.length - 1; i++)
 		{
 			var cellData = cData[i].split("|");
-			cellData[0] = cellData[0].replace(/\s+/g, '');
-			var marker = new L.Marker([parseFloat(cellData[3]), parseFloat(cellData[2]), { displayNumber: 1}])
+			var marker = new L.Marker([parseFloat(cellData[2]), parseFloat(cellData[1])], {displayNumber: 1, mcc: $("#sMcc").val(), net: $("#sMnc").val(), area: $("#sLac").val(), cid: cellData[0], radio: $("#sRadio").val()})
 							.setIcon(redMarkerIcon)
-							.bindPopup("<center><b>" +  cellData[0] + "<br>CID: " + cellData[1] + "</b></center><br>LAC: " + 
-									$("#sLac").val() + "<br>MNC: " + $("#sMnc").val() + "<br>MCC: " + $("#sMcc").val());
+							.bindPopup("<center><b>" +  $("#sRadio").val() + "<br>CID: " + cellData[0] + "</b></center><br>LAC: " + 
+									$("#sLac").val() + "<br>MNC: " + $("#sMnc").val() + "<br>MCC: " + $("#sMcc").val())
+							.on('dblclick', function(e) {
+									loadMeasData(this);
+							});
+								
 			lacMarkerCluster.addLayer(marker);
 		}
-		var polyLayer = L.geoJson(JSON.parse(sData[2])).bindPopup("<center><b>" +  cellData[0] + "</b></center><br>LAC: " + $("#sLac").val() + 
+		var polyLayer = L.geoJson(JSON.parse(sData[2])).bindPopup("<center><b>" +  $("#sRadio").val() + "</b></center><br>LAC: " + $("#sLac").val() + 
 														"<br>MNC: " + $("#sMnc").val() + "<br>MCC: " + $("#sMcc").val());
+		var polyLayer2 = L.geoJson(JSON.parse(sData[3]));
 		
-		cvLACCellLayer.addLayer(lacMarkerCluster);
-		cvLACPolyLayer.addLayer(polyLayer);
+		sLACCellLayer.addLayer(lacMarkerCluster);
+		sLACPolyLayer.addLayer(polyLayer);
+		sLACPolyLayer.addLayer(polyLayer2);
 		
 		if($("#sLACcellVis").is(":checked"))
-			map.addLayer(cvLACCellLayer);
+			map.addLayer(sLACCellLayer);
 
-		map.addLayer(cvLACPolyLayer);
+		map.addLayer(sLACPolyLayer);
 		map.fitBounds(lacMarkerCluster.getBounds());
-		
-		if(map.hasLayer(cellViewLayer))
-			map.removeLayer(cellViewLayer);
-		if(map.hasLayer(measLayer))
-			map.removeLayer(measLayer);
 		
 		$("#loadingGif").hide();
 	});
 }
 
-loadCellData = function()
+function loadMeasData(mkr)
 {
-	// If Ajax active, wait until it finishes and start a new one
-	// Better version: Limit request freq. and cancel old requests (client AND server side)
-	// 1: if (ajaxReq = active) -> ajaxReq.abort(); 
-	// 2: newAjaxReq.start();
-	// 3: Kill old request on server!?
+	if (paraDataSource == "ocid")
+	{
+		var mCord = mkr.getLatLng();
+		stopCellView();
+		$.post( 'searchCells.php', { type: 'cell', mcc: mkr.options.mcc, mnc: mkr.options.net
+							   , lac: mkr.options.area, cid: mkr.options.cid, radio: mkr.options.radio, dataSource: paraDataSource}, function( data )
+		{
+			if(data == "MULTIPLE")
+			{
+				alert("Multiple Cells Found.");
+				return;
+			} else if(data == "NONE")
+			{
+				alert("No Cell Found.");
+				return;
+			}
+				
+			var lonlat = data.split("|");
+			
+			if(lonlat.length == 1)
+			{
+				alert("Invalid Data Received. Database Error?");
+				return;
+			}
+			
+			sCellLayer = L.marker([parseFloat(lonlat[1]), parseFloat(lonlat[0])], {mcc: $("#sMcc").val(), net: $("#sMnc").val(), area: $("#sLac").val(), cid: $("#sId").val(), radio: $("#sRadio").val()}).setIcon(redMarkerIcon);
+			map.addLayer(sCellLayer);
+		});
+
+		$.post( 'getMeasData.php', {mcc: mkr.options.mcc, net: mkr.options.net, area: mkr.options.area, cid: mkr.options.cid, radio: mkr.options.radio}, function( measData )
+		{
+			var mData = measData.split("&&");
+			if(mData.length == 2)
+			{
+				alert("Error in Response: " + measData);
+				return;
+			}
+			if(mData.length == 3)
+			{
+				alert("No Data.");
+				return;
+			}
+			
+			measLayer = new L.FeatureGroup();
+			for (var i = 1; i < (mData.length - 1); i++)
+			{
+				var sMeasData = mData[i].split("|");
+				
+				var lowPower = -105;
+				var highPower = -75;
+				var diff = highPower - lowPower;
+				
+				var hue = (parseInt(sMeasData[2]) - lowPower) / diff;
+				if(hue > 1) hue = 1;
+				if(hue < 0) hue = 0;
+				
+				var opacity = hue + 0.3;
+				if(opacity > 1) opacity = 1;
+				opacity = opacity * 0.8;
+				
+				var marker = new L.Marker([parseFloat(sMeasData[1]), parseFloat(sMeasData[0])], {title: (parseInt(sMeasData[2]) + " dBm"), opacity: opacity});
+
+				hue = hue * 135;
+				var conPoly = L.polyline(new Array(mCord, marker.getLatLng()), {color: 'hsl('+hue+',100%,50%)'}).addTo(map);
+				
+				measLayer.addLayer(marker);	
+				measLayer.addLayer(conPoly);
+			}
+
+			map.addLayer(measLayer);
+			map.fitBounds(measLayer.getBounds());
+		})
+	}
+}
+
+function loadCellData()
+{
+	// Queue upto one request, retry later if request is active
 	if(cellReqIsQueued)
 	{
 		if($.active > 0)
+		{
+			window.clearTimeout(timeoutHandle);
+			timeoutHandle = window.setTimeout(loadCellData, 500);
 			return;
+		}
 		else
 			cellReqIsQueued = false;
 	}
 	else if($.active > 0)
 	{
 		cellReqIsQueued = true;
-		window.setTimeout(loadCellData, 500);
+		window.clearTimeout(timeoutHandle);
+		timeoutHandle = window.setTimeout(loadCellData, 500);
 		return;
 	}
+	
+	$("#loadingGif").show();
 	
 	var bounds = map.getBounds();
 	var swBounds = bounds.getSouthWest();
 	var neBounds = bounds.getNorthEast();
 	var mapZoom = map.getZoom();
-		
-	var modeVar = "none";
-	
-	// Populate MNC List
-	// Step 1: Get all MNCs
-	// Step 2: Hide all entries
-	// Step 3: Unhide / create all new entries in Order
-	$("#loadingGif").show();
 	
 	var radioVar = "";
-	
 	if($("#GSMBox").is(":checked"))
 		radioVar = "GSM|";
 	if($("#UMTSBox").is(":checked"))
@@ -353,10 +408,8 @@ loadCellData = function()
 	if(radioVar == "")
 	{
 		// Nothing to load.
+		clearMap();
 		$("#loadingGif").hide();
-		if(map.hasLayer(cellViewLayer))
-			map.removeLayer(cellViewLayer);
-		cvLACPolyHoverLayer.clearLayers();
 		return;
 	}
 	
@@ -364,11 +417,15 @@ loadCellData = function()
 	if(paraIgnoreOldData)
 		ageVar = Math.floor(Date.now() / 1000) - paraIgnoreDataAge;
 	
+	// Populate MNC List
+	// Step 1: Get all MNCs
+	// Step 2: Hide all entries
+	// Step 3: Unhide / create all new entries in Order
+	
 	// Create hash of args to identify AJAX responce
-	var uHash = hashString(swBounds.lat + swBounds.lng + neBounds.lat + neBounds.lng + mapZoom + radioVar + "mnc" + ageVar + paraDataSource);
-	waitingForHash = uHash;
-		
-	$.post( 'getData.php', {hash: uHash, latUL: swBounds.lat, lonUL: swBounds.lng, latOR: neBounds.lat, lonOR: neBounds.lng, zoom: mapZoom, radios: radioVar, nets: "mnc", mode: "mnc", ageStamp: ageVar, dataSource: paraDataSource}, function( mncData )
+	waitingForHash = hashString(swBounds.lat + swBounds.lng + neBounds.lat + neBounds.lng + mapZoom + radioVar + "mnc" + ageVar + paraDataSource);
+	
+	$.post( 'getData.php', {hash: waitingForHash, latUL: swBounds.lat, lonUL: swBounds.lng, latOR: neBounds.lat, lonOR: neBounds.lng, zoom: mapZoom, radios: radioVar, nets: "mnc", mode: "mnc", ageStamp: ageVar, dataSource: paraDataSource}, function( mncData )
 	{
 		var sMncData = mncData.split("&&");
 		if((sMncData[0] == waitingForHash) || (waitingForHash != 0))
@@ -431,23 +488,21 @@ loadCellData = function()
 			if(mncVar == "")
 			{
 				// Nothing to load.
-				if(map.hasLayer(cellViewLayer))
-					map.removeLayer(cellViewLayer);
-				cvLACPolyHoverLayer.clearLayers();
+				clearMap();
 				$("#loadingGif").hide();
 				return;
 			}
 			
+			var modeVar = "norm";
 			if($("#cvGLac").is(":checked"))
 				modeVar = "lacSort";
 			
 			if($("#cvHMMode").is(":checked"))
 				modeVar = "heat";
 			
-			var uHash = hashString(swBounds.lat + swBounds.lng + neBounds.lat + neBounds.lng + modeVar + mapZoom + radioVar + mncVar + ageVar + paraDataSource);
-			waitingForHash = uHash;
+			waitingForHash = hashString(swBounds.lat + swBounds.lng + neBounds.lat + neBounds.lng + modeVar + mapZoom + radioVar + mncVar + ageVar + paraDataSource);
 					
-			$.post( 'getData.php', {hash: uHash, latUL: swBounds.lat, lonUL: swBounds.lng, latOR: neBounds.lat, lonOR: neBounds.lng, mode: modeVar, zoom: mapZoom, radios: radioVar, nets: mncVar, ageStamp: ageVar, dataSource: paraDataSource}, function( data )
+			$.post( 'getData.php', {hash: waitingForHash, latUL: swBounds.lat, lonUL: swBounds.lng, latOR: neBounds.lat, lonOR: neBounds.lng, mode: modeVar, zoom: mapZoom, radios: radioVar, nets: mncVar, ageStamp: ageVar, dataSource: paraDataSource}, function( data )
 			{
 				var sData = data.split("&&");
 				if(sData.length == 2)
@@ -461,11 +516,7 @@ loadCellData = function()
 					if(sData[0] == waitingForHash)
 						waitingForHash = 0;
 				
-					if(map.hasLayer(measLayer))
-						map.removeLayer(measLayer);
-					if(map.hasLayer(cellViewLayer))
-						map.removeLayer(cellViewLayer);
-					cvLACPolyHoverLayer.clearLayers();
+					clearMap();
 				
 					cellViewLayer = L.layerGroup();
 					
@@ -510,32 +561,8 @@ loadCellData = function()
 								.bindPopup("<center><b>" +  clusterData[0] + "</b></center><br>MCC: " + clusterData[1] + 
 										"<br>MNC: " + clusterData[2] + "<br>LAC: " + clusterData[3] + 
 										"<br>CID: " + clusterData[4]).setIcon(greenMarkerIcon)
-								.on('click', function(e) {
-									if (paraDataSource == "ocid")
-									{
-										// Get meas Data
-										$.post( 'getMeasData.php', {mcc: this.options.mcc, net: this.options.net, area: this.options.area, cid: this.options.cid, radio: this.options.radio}, function( measData )
-										{
-											var mData = measData.split("&&");
-											if(mData.length == 2)
-											{
-												alert("Error in Response: " + measData);
-												return;
-											}
-											for (var i = 1; i < (mData.length - 1); i++)
-											{
-												var sMeasData = mData[i].split("|");
-												var marker = new L.Marker([parseFloat(sMeasData[1]), parseFloat(sMeasData[0])], title: (parseFloat(sMeasData[3]) + "dBm"));
-												
-												if(map.hasLayer(measLayer))
-													map.removeLayer(measLayer);
-												
-												measLayer = L.layerGroup();
-												measLayer.addLayer(marker);
-												map.addLayer(measLayer);												
-											}
-										})
-									}
+								.on('dblclick', function(e) {
+									loadMeasData(this);
 								});
 							mlsMarkerCluster.addLayer(marker);
 						}
@@ -591,9 +618,9 @@ loadCellData = function()
 								for(var i = 0; i < markers.length; i++)
 									number += parseInt(markers[i].options.displayNumber);
 								var c = ' marker-cluster-';
-								if (number < (1 * 20)) {
+								if (number < 10) {
 									c += 'small';
-								} else if (number < (10 * 40)) {
+								} else if (number < 40) {
 									c += 'medium';
 								} else {
 									c += 'large';
@@ -622,8 +649,7 @@ loadCellData = function()
 													"<br>MCC: " + clusterData[3]);
 									
 									var marker = new L.Marker([parseFloat(clusterData[6]), parseFloat(clusterData[5])], 
-																	{displayNumber: parseInt(clusterData[4]), 
-																	lacPoly: polyLayer, lac: clusterData[0],
+																	{displayNumber: 1, lacPoly: polyLayer, lac: clusterData[0],
 																	mnc: clusterData[2], mcc: clusterData[3], radio: clusterData[1]})
 												.bindPopup("<center><b>LAC: " + clusterData[0] + "</b></br>Size: " + clusterData[4] + "</center>")
 												.on('click', function(e) {
@@ -710,14 +736,14 @@ loadCellData = function()
 	});
 }
 
-setParams = function()
+function setParams()
 {
 	// Save new Params
 	if($("#SETignoreOldData").is(':checked'))
 		paraIgnoreOldData = true;
 	else
 		paraIgnoreOldData = false;
-	// Do some UNIX timestamp conversion
+
 	var ageStr = $("#SEToldDataThreshold").val();
 	paraIgnoreDataAge = parseInt(parseInt(ageStr)) * 2628000;
 	
@@ -754,11 +780,73 @@ setParams = function()
 	saveToCookie();
 }
 
-$(document).ready(function()
+function init() // All static one-time stuff is here
 {
+	// Init Map
+	osmLayer = L.tileLayer('http://{s}.tile.openstreetmap.de/tiles/osmde/{z}/{x}/{y}.png', {
+		attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, ' + 
+			' <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>',
+		maxZoom: 18,
+		minZoom: 2,
+	});
+	
+	otmLayer = L.tileLayer('http://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+		attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, Tiles:  &copy; <a href="http://opentopomap.org">OpenTopoMap</a>' + 
+			' <a href="http://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>',
+		maxZoom: 18,
+		minZoom: 2,
+	});
+	
+	map = L.map('map', {
+		center: [49.574, 11.0294],
+		zoom: 14,
+		layers: [osmLayer, otmLayer]
+	});
+	
+	var baseMaps = {
+		"OpenStreetMap": osmLayer,
+		"OpenTopoMap": otmLayer
+	};
+	
+	map.removeLayer(otmLayer);
+	
+	L.control.layers(baseMaps).addTo(map);
+	map.addLayer(cvLACPolyHoverLayer);
+		
+	new L.Control.GeoSearch({
+		provider: new L.GeoSearch.Provider.OpenStreetMap(),
+		position: 'topleft',
+	}).addTo(map);
+	
+	L.control.scale({position: 'topleft', maxWidth: 150}).addTo(map);
+		
+	// Load Settings
 	loadFromCookie();
 	
-	$("#searchDiv").hide();
+	// Load Builddate
+	$.post('getInfo.php', {para: 'DB_DATE_STRING'}, function(data){
+		$("#buildInfo").append(data);
+	});
+	
+	// Ajax Setup
+	$.ajaxSetup({
+		timeout: paraAJAXTimeout,
+		error: function(x, t, m) {
+			if(t==="timeout")
+				alert("Server took to long to respond. May be overloaded?");
+			waitingForHash = 0;
+			$("#loadingGif").hide();
+		}
+	});
+	
+	// Lots of UI Setup
+	$("#settingsContainer").accordion({
+      heightStyle: "content"
+    });
+	
+	$(document).tooltip({
+		tooltipClass: "tooltipClass"
+	});
 	
 	$("#cvModeDiv").buttonset();
 	$("#typeSelectDiv").buttonset();
@@ -774,32 +862,13 @@ $(document).ready(function()
 	
 	$("#mncDisabledText").hide();
 	$("#loadingGif").hide();
+	$("#searchDiv").hide();
 	
-	$.ajaxSetup({
-		timeout: paraAJAXTimeout,
-		error: function(x, t, m) {
-			if(t==="timeout") {
-				alert("Server took to long to respond. May be overloaded?");
-			} else {
-				// Some other Error
-			}
-			waitingForHash = 0;
-			$("#loadingGif").hide();
-		}
-	});
-	
-	// Load Builddate
-	$.post('getInfo.php', {para: 'DB_DATE_STRING'}, function(data){
-		$("#buildInfo").append(data);
-	});
-	
-	// Search Dialog
 	$("#searchDialog").dialog({
 		autoOpen: false,
 		width: 218,
 		maxWidth: 218,
-		buttons: [
-					{
+		buttons: 	[{
 						text: "Search",
 						click: function() {
 							if($("#sId").val() == "")
@@ -818,9 +887,6 @@ $(document).ready(function()
 										alert("No Cell Found.");
 										return;
 									}
-									
-									if(map.hasLayer(csCellLayer))
-										map.removeLayer(csCellLayer);
 										
 									var lonlat = data.split("|");
 									
@@ -829,12 +895,15 @@ $(document).ready(function()
 										alert("Invalid Data Received. Database Error?");
 										return;
 									}
+									stopCellView();
 									
-									csCellLayer = L.marker([parseFloat(lonlat[1]), parseFloat(lonlat[0])]);
+									sCellLayer = L.marker([parseFloat(lonlat[1]), parseFloat(lonlat[0])], {mcc: $("#sMcc").val(), net: $("#sMnc").val(), area: $("#sLac").val(), cid: $("#sId").val(), radio: $("#sRadio").val()})
+											.on('dblclick', function(e) {
+												loadMeasData(this);
+											});
+				
+									map.addLayer(sCellLayer);
 									
-									autoLoad = false;
-									
-									map.addLayer(csCellLayer);
 									map.panTo(new L.LatLng(parseFloat(lonlat[1]), parseFloat(lonlat[0])));
 									map.setZoom(15);
 								});
@@ -844,13 +913,9 @@ $(document).ready(function()
 					{
 						text: "Close",
 						click: function() {
-							autoLoad = true;
-							if(map.hasLayer(csCellLayer))
-								map.removeLayer(csCellLayer);
 							$("#searchDialog").dialog("close");
 						}
-					}
-				],
+					}],
 				open: function(){
 					// Load UI
 					$("#sRadio").selectmenu({width: 80});
@@ -867,7 +932,6 @@ $(document).ready(function()
 				}
 	});
 		
-	// Settings Dialog
 	$("#settingsDialog").dialog({
 		autoOpen: false,
 		width: 500,
@@ -879,7 +943,7 @@ $(document).ready(function()
 							setParams();
 							if(autoLoad)
 								loadCellData();
-							$( this ).dialog( "close" );
+							$(this).dialog( "close" );
 						}
 					},
 					{
@@ -892,7 +956,6 @@ $(document).ready(function()
 						}
 					},
 					{
-						
 						text: "Restore defaults",
 						click: function() {
 							deleteCookie();
@@ -966,19 +1029,13 @@ $(document).ready(function()
 				}
 	});
 	
-	$("#settingsContainer").accordion({
-      heightStyle: "content"
-    });
-	
-	$(document).tooltip({
-		tooltipClass: "tooltipClass"
-	});
+	loadCellData();
+}
 
-	initMap();	
+$(document).ready(function()
+{
+	init();
 	
-	if(autoLoad)
-		loadCellData();
-
 	map.on('dragend', function(e) {
 		if(autoLoad)
 			loadCellData();
@@ -996,25 +1053,15 @@ $(document).ready(function()
 	
 	$("#mncSelectDiv").on( "click", ".mncSelect", function() {
 		//uncheck "Show all" if something else is clicked
-		if($(this).attr("id") == "mncAll")
-			loadCellData();
-		else
-		{
+		if($(this).attr("id") != "mncAll")
 			$("#mncAll").prop('checked', false);
+		if(autoLoad)
 			loadCellData();
-		}
 	});
 	
 	$('input:radio[name="cvModeS"]').change(function(){
 		autoLoad = true;
-		if(autoLoad)
-			loadCellData();
-		if(map.hasLayer(cvLACOutlineLayer))
-			map.removeLayer(cvLACOutlineLayer);
-		if(map.hasLayer(cvLACCellLayer))
-			map.removeLayer(cvLACCellLayer);
-		if(map.hasLayer(cvLACPolyLayer))
-			map.removeLayer(cvLACPolyLayer);
+		loadCellData();
 	});
 	
 	$("#settingsBtn").click(function(){
@@ -1028,12 +1075,12 @@ $(document).ready(function()
 	$("#sLACcellVis").click(function(){
 		if($("#sLACcellVis").is(":checked"))
 		{
-			if(map.hasLayer(cvLACPolyLayer))
-				map.addLayer(cvLACCellLayer);
+			if(map.hasLayer(sLACPolyLayer))
+				map.addLayer(sLACCellLayer);
 		}else
 		{
-			if(map.hasLayer(cvLACCellLayer))
-				map.removeLayer(cvLACCellLayer);
+			if(map.hasLayer(sLACCellLayer))
+				map.removeLayer(sLACCellLayer);
 		}
 	});
 });

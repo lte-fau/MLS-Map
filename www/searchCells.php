@@ -31,7 +31,7 @@ if(!is_numeric($mnc))
 	die("Invalid Parameter N.");
 if(!is_numeric($lac))
 	die("Invalid Parameter A.");
-if(!is_numeric($cid))
+if(!(is_numeric($cid) || $type == 'lac'))
 	die("Invalid Parameter C.");
 
 // Create connection
@@ -60,7 +60,7 @@ if($type == 'cell')
 		$res = "NONE";
 } else if($type == 'lac')
 {
-	$sql = "SELECT radio, cell, ST_X(pos), ST_Y(pos) FROM $mainTableName WHERE mcc = $mcc AND net = $mnc AND area = $lac AND radio = '$radio';";
+	$sql = "SELECT cell, ST_X(pos), ST_Y(pos) FROM $mainTableName WHERE mcc = $mcc AND net = $mnc AND area = $lac AND radio = '$radio'";
 	$result = pg_query($conn, $sql);
 
 	if (!$result) {
@@ -74,9 +74,17 @@ if($type == 'cell')
 		$res = 'ERR&&';
 	
 	for ($i = 0; $i < pg_num_rows($result); $i++)
-		$res .= pg_fetch_result($result, $i, 0) . '|' .  pg_fetch_result($result, $i, 1) . '|' . pg_fetch_result($result, $i, 2) . '|' . pg_fetch_result($result, $i, 3) . "##";
+		$res .= pg_fetch_result($result, $i, 0) . '|' .  pg_fetch_result($result, $i, 1) . '|' . pg_fetch_result($result, $i, 2) . "##";
 	
-	$sql = "SELECT ST_AsGeoJSON(ST_CONVEXHULL(ST_COLLECT(pos))) FROM $mainTableName WHERE mcc = $mcc AND net = $mnc AND area = $lac AND radio = '$radio' GROUP BY mcc, net, area, radio;";
+	$sql = "SELECT ST_AsGeoJSON(ST_CONVEXHULL(ST_COLLECT(pos))) FROM $mainTableName WHERE mcc = $mcc AND net = $mnc AND area = $lac AND radio = '$radio' GROUP BY mcc, net, area, radio";
+	$result = pg_query($conn, $sql);
+	if (!$result) {
+		echo "An error occurred while reading Data2.";
+		exit;
+	}
+	$res .= "&&" . pg_fetch_result($result, 0, 0);
+
+	$sql = "SELECT ST_AsGeoJSON(outline) FROM $lacTableName WHERE mcc = $mcc AND net = $mnc AND area = $lac AND radio = '$radio'";
 	$result = pg_query($conn, $sql);
 	if (!$result) {
 		echo "An error occurred while reading Data2.";

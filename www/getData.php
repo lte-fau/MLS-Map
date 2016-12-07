@@ -20,6 +20,23 @@ $nets = $_POST["nets"];
 $ageStamp = $_POST["ageStamp"];
 $dataSource = $_POST["dataSource"];
 
+
+// Get these params from db
+$paraViewExtendFactor = 0.1;
+$paraMncDisableLevel = 8;
+
+$paraForceLacSortLevel = 8;
+$paraForceClusteredLacSortLevel = 9;
+$paraForceClusteredCellsLevel = 12;
+
+$paraCellClusterGridSize = 12;
+$paraLacClusterGridSize = 15;
+
+$paraHeatGridSize = 40;
+$paraHeatMaxCellLevel = 9;
+$paraHeatUseLacLevel = 7;
+
+
 if($dataSource == "ocid")
 {
 	$mainTableName = "ocid";
@@ -37,11 +54,11 @@ if($exMode == "mnc")
 	$mode = "mnc";
 else if($exMode == "heat")
 	$mode = "heat";
-else if($exMode == "lacSort" || $zoom < 9)
+else if($exMode == "lacSort" || $zoom <= $paraForceLacSortLevel)
 {
 	$mode = "lacSort";
-	if($zoom < 9) $mode .= "Clustered";
-}else if($zoom >= 13)
+	if($zoom <= $paraForceClusteredLacSortLevel) $mode .= "Clustered";
+}else if($zoom > $paraForceClusteredCellsLevel)
 	$mode = "cell"; 
 else
 	$mode = "cluster";
@@ -50,10 +67,10 @@ else
 $latdif = $latOR - $latUL;
 $londif = $lonOR - $lonUL;
 
-$latUL -= $latdif*0.02;
-$lonUL -= $londif*0.02;
-$latOR += $latdif*0.02;
-$lonOR += $londif*0.02;
+$latUL -= $latdif * $viewExtendFactor;
+$lonUL -= $londif * $viewExtendFactor;
+$latOR += $latdif * $viewExtendFactor;
+$lonOR += $londif * $viewExtendFactor;
 
 if($latUL <= -90)
 	$latUL = -89.99;
@@ -131,7 +148,7 @@ if($mode == "cell")
 	$res = $hash . "&&cell&&";
 	
 	$sql = "SELECT radio, mcc, net, area, cell, ST_X(pos), ST_Y(pos) FROM $mainTableName WHERE pos && ST_MakeEnvelope (
-					$lonUL, $latUL, $lonOR, $latOR, 4326) AND radio IN ($inStringRadio) $inStringNet $inStringTime;";
+					$lonUL, $latUL, $lonOR, $latOR, 4326) AND radio IN ($inStringRadio) $inStringNet $inStringTime";
 	$result = pg_query($conn, $sql);
 	
 	if (!$result) {
@@ -149,7 +166,7 @@ if($mode == "cell")
 {
 	$res = $hash . "&&cluster&&";
 	
-	$xySplit = 12;
+	$xySplit = $paraCellClusterGridSize;
 	
 	$xUL = lon2x($lonUL);
 	$xOR = lon2x($lonOR);
@@ -178,7 +195,7 @@ if($mode == "cell")
 			$lonORBound = $baseLon + $lonModifier*($i+1);
 			
 			$sql = "SELECT COUNT(*) FROM $mainTableName WHERE pos && ST_MakeEnvelope (
-					$lonULBound, $latULBound, $lonORBound, $latORBound, 4326) AND radio IN ($inStringRadio) $inStringNet $inStringTime;";
+					$lonULBound, $latULBound, $lonORBound, $latORBound, 4326) AND radio IN ($inStringRadio) $inStringNet $inStringTime";
 		
 			$result = pg_query($conn, $sql);
 			
@@ -195,13 +212,13 @@ if($mode == "cell")
 				$res .= $centerLat . "|" . $centerLon . "|" . $sValue . "##";	
 		}
 	}
-}else if($mode == "lacSort")
+}else if($mode == "lacSort" && $exMode == "lacSort")
 {
 	$res = $hash . "&&lacSort&&";
 	
 	$sql = "SELECT area, radio, net, mcc, size, ST_X(cPos), ST_Y(cPos), ST_AsGeoJSON(outline) 
 			FROM $lacTableName 
-			WHERE cPos && ST_MakeEnvelope ($lonUL, $latUL, $lonOR, $latOR, 4326) AND radio IN ($inStringRadio) $inStringNet;";
+			WHERE cPos && ST_MakeEnvelope ($lonUL, $latUL, $lonOR, $latOR, 4326) AND radio IN ($inStringRadio) $inStringNet";
 	
 	$result = pg_query($conn, $sql);
 	
@@ -216,11 +233,31 @@ if($mode == "cell")
 				pg_fetch_result($result, $i, 3) . '|' . pg_fetch_result($result, $i, 4) . '|' . pg_fetch_result($result, $i, 5) . '|' . 
 				pg_fetch_result($result, $i, 6) . '|' . pg_fetch_result($result, $i, 7) . "##";
 	}
+}else if($mode == "lacSort" && $exMode == "norm")
+{
+	$res = $hash . "&&cluster&&";
+	
+	$sql = "SELECT size, ST_X(cPos), ST_Y(cPos)
+			FROM $lacTableName 
+			WHERE cPos && ST_MakeEnvelope ($lonUL, $latUL, $lonOR, $latOR, 4326) AND radio IN ($inStringRadio) $inStringNet";
+	
+	$result = pg_query($conn, $sql);
+	
+	if (!$result) {
+		echo "An error occurred while reading Data.";
+		exit;
+	}
+	
+	for ($i = 0; $i < pg_num_rows($result); $i++)
+		$res .= pg_fetch_result($result, $i, 1) . '|' .  pg_fetch_result($result, $i, 0) . '|' . pg_fetch_result($result, $i, 2) . "##";
 }else if($mode == "lacSortClustered")
 {
-	$res = $hash . "&&lacSortClustered&&";
+	if($exMode == "norm")
+		$res = $hash . "&&cluster&&";
+	else
+		$res = $hash . "&&lacSortClustered&&";
 	
-	$xySplit = 15;
+	$xySplit = $paraLacClusterGridSize;
 	
 	$xUL = lon2x($lonUL);
 	$xOR = lon2x($lonOR);
@@ -248,8 +285,13 @@ if($mode == "cell")
 			$latORBound = $baseLat + $latModifier*($j+1);
 			$lonORBound = $baseLon + $lonModifier*($i+1);
 			
-			$sql = "SELECT SUM(size) FROM $lacTableName WHERE cPos && ST_MakeEnvelope (
-					$lonULBound, $latULBound, $lonORBound, $latORBound, 4326) AND radio IN ($inStringRadio) $inStringNet;";
+			if($exMode == "norm")
+				$sql = "SELECT SUM(size) FROM $lacTableName WHERE cPos && ST_MakeEnvelope (
+					$lonULBound, $latULBound, $lonORBound, $latORBound, 4326) AND radio IN ($inStringRadio) $inStringNet";
+			else
+				$sql = "SELECT count(*) FROM $lacTableName WHERE cPos && ST_MakeEnvelope (
+					$lonULBound, $latULBound, $lonORBound, $latORBound, 4326) AND radio IN ($inStringRadio) $inStringNet";
+			
 		
 			$result = pg_query($conn, $sql);
 			
@@ -270,10 +312,10 @@ if($mode == "cell")
 {
 	$res = $hash . "&&heat&&";
 	
-	if($zoom > 8)
+	if($zoom >= $paraHeatMaxCellLevel)
 	{
 		$sql = "SELECT ST_X(pos), ST_Y(pos) FROM $mainTableName WHERE pos && ST_MakeEnvelope (
-			$lonUL, $latUL, $lonOR, $latOR, 4326) AND radio IN ($inStringRadio) $inStringNet $inStringTime;";
+			$lonUL, $latUL, $lonOR, $latOR, 4326) AND radio IN ($inStringRadio) $inStringNet $inStringTime";
 		
 		$result = pg_query($conn, $sql);
 		if (!$result) {
@@ -286,7 +328,7 @@ if($mode == "cell")
 		
 	}else
 	{
-		$xySplit = 40;
+		$xySplit = $paraHeatGridSize;
 		
 		$xUL = lon2x($lonUL);
 		$xOR = lon2x($lonOR);
@@ -314,12 +356,12 @@ if($mode == "cell")
 				$latORBound = $baseLat + $latModifier*($j+1);
 				$lonORBound = $baseLon + $lonModifier*($i+1);
 				
-				if(zoom < 8)
+				if(zoom <= $paraHeatUseLacLevel)
 					$sql = "SELECT SUM(size) FROM $lacTableName WHERE cPos && ST_MakeEnvelope (
-						$lonULBound, $latULBound, $lonORBound, $latORBound, 4326) AND radio IN ($inStringRadio) $inStringNet;";
+						$lonULBound, $latULBound, $lonORBound, $latORBound, 4326) AND radio IN ($inStringRadio) $inStringNet";
 				else
 					$sql = "SELECT COUNT(*) FROM $mainTableName WHERE pos && ST_MakeEnvelope (
-							$lonULBound, $latULBound, $lonORBound, $latORBound, 4326) AND radio IN ($inStringRadio) $inStringNet $inStringTime;";
+							$lonULBound, $latULBound, $lonORBound, $latORBound, 4326) AND radio IN ($inStringRadio) $inStringNet $inStringTime";
 			
 				$result = pg_query($conn, $sql);
 				
@@ -340,11 +382,11 @@ if($mode == "cell")
 {
 	$res = $hash . "&&mnc&&";
 			
-	if($zoom < 9)
+	if($zoom <= $paraMncDisableLevel)
 		$res .= "DISABLED";
 	else
 	{	
-		$sql = "SELECT DISTINCT net FROM $mainTableName WHERE pos && ST_MakeEnvelope ($lonUL, $latUL, $lonOR, $latOR, 4326) AND radio IN ($inStringRadio) $inStringTime ORDER BY net;";
+		$sql = "SELECT DISTINCT net FROM $mainTableName WHERE pos && ST_MakeEnvelope ($lonUL, $latUL, $lonOR, $latOR, 4326) AND radio IN ($inStringRadio) $inStringTime ORDER BY net";
 		$result = pg_query($conn, $sql);
 
 		if (!$result) {
