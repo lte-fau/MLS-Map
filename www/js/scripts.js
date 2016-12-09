@@ -1,6 +1,6 @@
 /* Copyright (C) 2016  Lehrstuhl für Technische Elektronik, Friedrich-Alexander-Universität Erlangen-Nürnberg */
 /* https://github.com/lte-fau/MLS-Map/blob/master/LICENSE */
-//____ Settings ____
+//____ Default Settings ____
 var paraFilterLACs = true; 					// Remove small LACs
 var paraLacFilterLimit = 10;				// Minimum Location Area size to not be filtered
 
@@ -296,31 +296,6 @@ function loadMeasData(mkr)
 	if (paraDataSource == "ocid")
 	{
 		var mCord = mkr.getLatLng();
-		stopCellView();
-		$.post( 'searchCells.php', { type: 'cell', mcc: mkr.options.mcc, mnc: mkr.options.net
-							   , lac: mkr.options.area, cid: mkr.options.cid, radio: mkr.options.radio, dataSource: paraDataSource}, function( data )
-		{
-			if(data == "MULTIPLE")
-			{
-				alert("Multiple Cells Found.");
-				return;
-			} else if(data == "NONE")
-			{
-				alert("No Cell Found.");
-				return;
-			}
-				
-			var lonlat = data.split("|");
-			
-			if(lonlat.length == 1)
-			{
-				alert("Invalid Data Received. Database Error?");
-				return;
-			}
-			
-			sCellLayer = L.marker([parseFloat(lonlat[1]), parseFloat(lonlat[0])], {mcc: $("#sMcc").val(), net: $("#sMnc").val(), area: $("#sLac").val(), cid: $("#sId").val(), radio: $("#sRadio").val()}).setIcon(redMarkerIcon);
-			map.addLayer(sCellLayer);
-		});
 
 		$.post( 'getMeasData.php', {mcc: mkr.options.mcc, net: mkr.options.net, area: mkr.options.area, cid: mkr.options.cid, radio: mkr.options.radio}, function( measData )
 		{
@@ -336,7 +311,20 @@ function loadMeasData(mkr)
 				return;
 			}
 			
+			stopCellView();
+			
 			measLayer = new L.FeatureGroup();
+			var measCluster = L.markerClusterGroup({
+					maxClusterRadius: 4,
+					singleMarkerMode: false,
+					spiderfyOnMaxZoom: true,
+					showCoverageOnHover: true,
+					zoomToBoundsOnClick: false,
+					disableClusteringAtZoom: 17
+				}).on('clusterclick', function (a) {
+					a.layer.spiderfy();
+				});
+			
 			for (var i = 1; i < (mData.length - 1); i++)
 			{
 				var sMeasData = mData[i].split("|");
@@ -358,10 +346,13 @@ function loadMeasData(mkr)
 				hue = hue * 135;
 				var conPoly = L.polyline(new Array(mCord, marker.getLatLng()), {color: 'hsl('+hue+',100%,50%)'}).addTo(map);
 				
-				measLayer.addLayer(marker);	
+				measCluster.addLayer(marker);	
 				measLayer.addLayer(conPoly);
 			}
-
+			
+			mkr.setIcon(redMarkerIcon);
+			measLayer.addLayer(mkr);
+			measLayer.addLayer(measCluster);
 			map.addLayer(measLayer);
 			map.fitBounds(measLayer.getBounds());
 		})

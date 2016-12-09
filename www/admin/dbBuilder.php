@@ -31,7 +31,7 @@ if($argv[1] == "ocid")
 } else if($argv[1] == "mls")
 {
 	//__________Params___________
-	$fileName = "MLSTowers.csv.gz";
+	$fileName = "tmp/MLSTowers.csv.gz";
 
 	$tempImportName = "bulkcells";
 	$tempTableName = "tempCells";
@@ -77,7 +77,10 @@ $file = gzopen($fileName, 'rb');
 $outputFile = fopen($outputFileName, 'wb'); 
 
 if($file == false || $outputFile == false)
+{
+	writeLog("Failed to open file.");
 	exit;
+}
 
 while (!gzeof($file)) {
     fwrite($outputFile, gzread($file, $buffer_size));
@@ -93,7 +96,13 @@ if($argv[1] == "mls")
 	$file_read = fopen($outputFileName, "r");
 	$outputFileName = str_replace('tmp/', '', $outputFileName); 
 	$outputFileName = "Mod" . $outputFileName;
-	$file_write = fopen($outputFileName, "w+");
+	$file_write = fopen('tmp/' . $outputFileName, "w+");
+	
+	if($file_read == false || $file_write == false)
+	{
+		writeLog("Failed to open file.");
+		exit;
+	}
 	
 	while(!feof($file_read))
 	{
@@ -150,9 +159,7 @@ if (!$result) {
 writeLog("Importing Data..");
 $result = pg_query($conn, "SELECT import_csv_file_to_table('$tempImportName', '$srcFileName')");
 if (!$result) {
-	writeLog("Importing Data..");
-	file_put_contents($logfilename, date("[Y-m-d H:i:s] ") . "An error occurred during Bulk import.", FILE_APPEND);
-	echo "An error occurred during Bulk import.";
+	writeLog("An error occurred during Bulk import.");
 	exit;
 }
 pg_query($conn, "COMMIT");

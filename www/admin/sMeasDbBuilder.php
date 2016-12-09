@@ -6,7 +6,7 @@ include "db-settings.php";
 include "logHelper.php";
 
 //__________Params___________
-$mode = 1; 								// Mode0 -> Merge last_measurements, Mode1 -> Create Database from local files, Mode2 -> Both
+$mode = 1;								// Mode0 -> Merge last_measurements, Mode1 -> Create Database from local files, Mode2 -> Both
 $startingFileIndex = 1;					// First local filenumber witch to import
 $endingFileIndex = 15;					// Last local filenumber witch to import
 $dropExistingData = 1;					// Only dropped if importing local files
@@ -112,7 +112,10 @@ for($fileIndex; $fileIndex <= $endingFileIndex; $fileIndex++)
 	$outputFile = fopen($outputFileName, 'wb'); 
 
 	if($file == false || $outputFile == false)
+	{
+		writeLog("Failed to open file.");
 		exit;
+	}
 
 	while (!gzeof($file)) {
 		fwrite($outputFile, gzread($file, $buffer_size));

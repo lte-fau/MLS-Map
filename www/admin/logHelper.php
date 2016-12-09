@@ -8,4 +8,17 @@ function writeLog($str)
 	file_put_contents("tmp/log.txt", $str, FILE_APPEND);
 	echo $str;
 }
+
+function truncateLog($size)
+{
+	$fileContent = file("tmp/log.txt");
+	$fileLength = count($fileContent);
+	
+	$nFile = fopen("tmp/log.txt", "w");
+	
+	for ($i = ($fileLength - $size); $i < $fileLength; $i++)
+		fwrite($nFile, $fileContent[$i]);
+
+	fclose($nFile);
+}
 ?>

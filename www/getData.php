@@ -67,10 +67,10 @@ else
 $latdif = $latOR - $latUL;
 $londif = $lonOR - $lonUL;
 
-$latUL -= $latdif * $viewExtendFactor;
-$lonUL -= $londif * $viewExtendFactor;
-$latOR += $latdif * $viewExtendFactor;
-$lonOR += $londif * $viewExtendFactor;
+$latUL -= $latdif * $paraViewExtendFactor;
+$lonUL -= $londif * $paraViewExtendFactor;
+$latOR += $latdif * $paraViewExtendFactor;
+$lonOR += $londif * $paraViewExtendFactor;
 
 if($latUL <= -90)
 	$latUL = -89.99;

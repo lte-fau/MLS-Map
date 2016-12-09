@@ -2,6 +2,7 @@
 /* https://github.com/lte-fau/MLS-Map/blob/master/LICENSE */
 
 var isActive = true;
+var consoleIsHeld = false;
 
 window.onfocus = function () { 
   isActive = true; 
@@ -22,20 +23,19 @@ function refreshConsole()
 {
 	if(isActive)
 	{
-		$.post('getConsole.php', {rows: 50}, function(data){
+		$.post('getConsole.php', {lines: 200}, function(data){
 			$('#consoleDiv').empty();
 			if(data == "NO_DATA")
-			{			
 				$("<p>Logfile is empty.</p>").appendTo("#consoleDiv");
-			} else
+			else
 			{
 				var cData = data.split("|");
-				for (var i = 0; i < cData.length; i++)
-				{
-					$("<p>" + cData[i] + "</p>").appendTo("#consoleDiv");
-				}
 				
-				$("#consoleDiv").scrollTop($("#consoleDiv")[0].scrollHeight);
+				for (var i = 0; i < cData.length; i++)
+					$("<p>" + cData[i] + "</p>").appendTo("#consoleDiv");
+				
+				if(!consoleIsHeld)
+					$("#consoleDiv").scrollTop($("#consoleDiv")[0].scrollHeight);
 			}
 		});
 	}
@@ -44,6 +44,12 @@ function refreshConsole()
 
 $(document).ready(function()
 {
+	$("#consoleDiv").on({
+		mousedown: function () { consoleIsHeld = true; },
+		mouseup: function () { consoleIsHeld = false; }
+	});
+
+
 	$(function(){
 		$("#tabs").tabs();
 	});
