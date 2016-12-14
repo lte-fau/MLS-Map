@@ -7,7 +7,7 @@ session_start();
 
 if(isset($_GET['login']))
 {	
-	include "../../db/db-settings.php";
+	include "db-settings.php";
 	$conn = pg_connect($connString)
 	or die('Could not connect: ' . pg_last_error());
 	
@@ -18,6 +18,10 @@ if(isset($_GET['login']))
 	$result = pg_query($conn, $sql);
 
 	if (!$result) {
+		// SELECT failed -> Table doesn't exist. Do first time setup..
+		include "logHelper.php";
+		writeLog("No admin table found. Performing first time setup.");
+		
 		$result = pg_query($conn, "CREATE TABLE admins(username text NOT NULL, password text NOT NULL, PRIMARY KEY (username))");
 			
 		if (!$result) {
@@ -40,7 +44,20 @@ if(isset($_GET['login']))
 		if (!$result) {
 			echo "An error occurred during Data Read.\n";
 			exit;
-		}		
+		}
+		
+		$sql = "CREATE TABLE IF NOT EXISTS $generalTableName(
+					para text NOT NULL,
+					time timestamp,
+					sInfo text,
+					iInfo integer,
+					eInfo integer,
+					PRIMARY KEY (para))";
+		$result = pg_query($conn, $sql);
+		if (!$result) {
+			echo "An error occurred during general Table creation.";
+			exit;
+		}
 	}
 	
 	if(pg_num_rows($result) == 1)

@@ -7,7 +7,8 @@ $type = $_POST["type"];
 $mcc = $_POST["mcc"];
 $mnc = $_POST["mnc"];
 $lac = $_POST["lac"];
-$cid = $_POST["cid"];
+if(isset($_POST["cid"]))
+	$cid = $_POST["cid"];
 $radio = $_POST["radio"];
 $dataSource = $_POST["dataSource"];
 
@@ -31,11 +32,11 @@ if(!is_numeric($mnc))
 	die("Invalid Parameter N.");
 if(!is_numeric($lac))
 	die("Invalid Parameter A.");
-if(!(is_numeric($cid) || $type == 'lac'))
+if(isset($cid) && !is_numeric($cid))
 	die("Invalid Parameter C.");
 
 // Create connection
-include "../db/db-settings.php";
+include "admin/db-settings.php";
 $conn = pg_connect($connString)
 	or die('Could not connect: ' . pg_last_error());
 	
@@ -84,7 +85,8 @@ if($type == 'cell')
 	}
 	$res .= "&&" . pg_fetch_result($result, 0, 0);
 
-	$sql = "SELECT ST_AsGeoJSON(outline) FROM $lacTableName WHERE mcc = $mcc AND net = $mnc AND area = $lac AND radio = '$radio'";
+	//$sql = "SELECT ST_AsGeoJSON(outline) FROM $lacTableName WHERE mcc = $mcc AND net = $mnc AND area = $lac AND radio = '$radio'";
+	$sql = "SELECT ST_AsGeoJSON(outline) FROM mcc WHERE mcc = 208";
 	$result = pg_query($conn, $sql);
 	if (!$result) {
 		echo "An error occurred while reading Data2.";

@@ -137,7 +137,7 @@ if($ageStamp != 0)
 else
 	$inStringTime = "";
 
-include "../db/db-settings.php";
+include "admin/db-settings.php";
 $conn = pg_connect($connString)
 	or die('Could not connect: ' . pg_last_error());
 	
@@ -356,7 +356,7 @@ if($mode == "cell")
 				$latORBound = $baseLat + $latModifier*($j+1);
 				$lonORBound = $baseLon + $lonModifier*($i+1);
 				
-				if(zoom <= $paraHeatUseLacLevel)
+				if($zoom <= $paraHeatUseLacLevel)
 					$sql = "SELECT SUM(size) FROM $lacTableName WHERE cPos && ST_MakeEnvelope (
 						$lonULBound, $latULBound, $lonORBound, $latORBound, 4326) AND radio IN ($inStringRadio) $inStringNet";
 				else

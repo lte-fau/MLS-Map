@@ -94,10 +94,10 @@ ALTER SYSTEM SET checkpoint_completion_target = 0.9;-- Default 0.5
 
 ## Third-party modules
 
-Leaflet 0.7.7
+Leaflet 1.0.2
 https://github.com/Leaflet/Leaflet/
 
-Leaflet Markercluster leaflet 0.7 (Modified)
+Leaflet Markercluster leaflet 1.0.0 (Modified)
 https://github.com/Leaflet/Leaflet.markercluster/
 
 Leaflet Heat 0.2.0 
@@ -106,11 +106,11 @@ https://github.com/Leaflet/Leaflet.heat/
 Leaflet geosearch 1.1.0
 https://github.com/smeijer/L.GeoSearch/
 
-Jquery 2.2.3
+Jquery 3.1.1
 https://github.com/jquery/jquery/
 
-Jquery UI 1.11.4
+Jquery UI 1.12.1
 https://github.com/jquery/jquery-ui/
 
-js.cookie 2.1.1
+js.cookie 2.1.3
 https://github.com/js-cookie/js-cookie/

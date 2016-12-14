@@ -8,17 +8,9 @@ $net = $_POST["net"];
 $area = $_POST["area"];
 $cid = $_POST["cid"];
 $radio = $_POST["radio"];
-/*
-$mcc = 262;
-$net = 1;
-$area = 17586;
-$cid = 2733792;
-$radio = "UMTS";
-	*/
 
 if(!($radio == "GSM" || $radio == "UMTS" || $radio == "LTE"))
 	die("Invalid Parameter R.");
-
 if(!is_numeric($mcc))
 	die("Invalid Parameter M.");
 if(!is_numeric($net))
@@ -28,8 +20,7 @@ if(!is_numeric($area))
 if(!is_numeric($cid))
 	die("Invalid Parameter C.");
 
-
-include "../db/db-settings.php";
+include "admin/db-settings.php";
 $conn = pg_connect($connString)
 	or die('Could not connect: ' . pg_last_error());
 	

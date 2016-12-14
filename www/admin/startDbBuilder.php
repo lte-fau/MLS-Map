@@ -26,10 +26,6 @@ ob_end_flush();
 ob_flush();
 flush();
 
-
-
-//exec('echo /usr/bin/php -q dbBuilder.php $mode $url | at now');
-
 echo "DbBuilder starting..";
 exec("/usr/bin/php -q dbBuilder.php $mode $url &");
 ?>

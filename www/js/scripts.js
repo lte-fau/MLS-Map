@@ -74,6 +74,15 @@ var redMarkerIcon = L.icon({
 	shadowSize: [41, 41]
 });
 
+var blueMarkerClusterIcon = L.icon({
+	iconUrl: 'leaflet/images/markerBlueCluster.png',
+	shadowUrl: 'leaflet/images/marker-shadow.png',
+	iconSize: [25, 41],
+	iconAnchor: [12, 41],
+	popupAnchor: [1, -34],
+	shadowSize: [41, 41]
+});
+
 var lacMarkerIcon = L.icon({
 	iconUrl: 'leaflet/images/lacMarkerGreen.png',
 	iconSize: [25, 27],
@@ -204,7 +213,7 @@ function stopCellView()
 	autoLoad = false;
 	
 	$('input:radio[name="cvModeS"]').prop('checked', false);
-	$("#cvModeDiv").buttonset("refresh");
+	$("#cvModeDiv :input").checkboxradio("refresh");
 	
 	clearMap();
 }
@@ -278,8 +287,8 @@ function searchLac()
 		var polyLayer2 = L.geoJson(JSON.parse(sData[3]));
 		
 		sLACCellLayer.addLayer(lacMarkerCluster);
-		sLACPolyLayer.addLayer(polyLayer);
 		sLACPolyLayer.addLayer(polyLayer2);
+		sLACPolyLayer.addLayer(polyLayer);
 		
 		if($("#sLACcellVis").is(":checked"))
 			map.addLayer(sLACCellLayer);
@@ -313,14 +322,17 @@ function loadMeasData(mkr)
 			
 			stopCellView();
 			
-			measLayer = new L.FeatureGroup();
+			measLayer = L.featureGroup();
 			var measCluster = L.markerClusterGroup({
+				iconCreateFunction: function (cluster) {
+								return blueMarkerClusterIcon;
+							},
 					maxClusterRadius: 4,
 					singleMarkerMode: false,
 					spiderfyOnMaxZoom: true,
 					showCoverageOnHover: true,
 					zoomToBoundsOnClick: false,
-					disableClusteringAtZoom: 17
+					disableClusteringAtZoom: 15
 				}).on('clusterclick', function (a) {
 					a.layer.spiderfy();
 				});
@@ -339,15 +351,14 @@ function loadMeasData(mkr)
 				
 				var opacity = hue + 0.3;
 				if(opacity > 1) opacity = 1;
-				opacity = opacity * 0.8;
+				opacity = opacity * 0.9;
 				
 				var marker = new L.Marker([parseFloat(sMeasData[1]), parseFloat(sMeasData[0])], {title: (parseInt(sMeasData[2]) + " dBm"), opacity: opacity});
 
 				hue = hue * 135;
-				var conPoly = L.polyline(new Array(mCord, marker.getLatLng()), {color: 'hsl('+hue+',100%,50%)'}).addTo(map);
-				
-				measCluster.addLayer(marker);	
+				var conPoly = L.polyline(new Array(mCord, marker.getLatLng()), {color: 'hsl('+hue+',100%,50%)', opacity: opacity * 0.15});
 				measLayer.addLayer(conPoly);
+				measCluster.addLayer(marker);
 			}
 			
 			mkr.setIcon(redMarkerIcon);
@@ -470,7 +481,10 @@ function loadCellData()
 					}
 					lastObject = $("#mncLa" + mncs[i]);
 				}
-				$("#mncSelectDiv").buttonset("refresh");
+				
+				$("#mncSelectDiv :input").checkboxradio({
+					icon: false
+				}).checkboxradio("refresh");
 			}
 
 			if($("#mncAll").is(":checked"))
@@ -717,6 +731,7 @@ function loadCellData()
 					}else alert("Error in Response: " + data);
 					
 					if(typeof mlsMarkerCluster !== 'undefined')
+						
 						cellViewLayer.addLayer(mlsMarkerCluster);
 					map.addLayer(cellViewLayer);
 					
@@ -839,9 +854,15 @@ function init() // All static one-time stuff is here
 		tooltipClass: "tooltipClass"
 	});
 	
-	$("#cvModeDiv").buttonset();
-	$("#typeSelectDiv").buttonset();
-	$("#mncSelectDiv").buttonset();
+	$("#cvModeDiv :input").checkboxradio({
+		icon: false
+    });
+	$("#typeSelectDiv :input").checkboxradio({
+		icon: false
+    });
+	$("#mncSelectDiv :input").checkboxradio({
+		icon: false
+    });
 	
 	$("#settingsBtn").button({
 		icons: {secondary: "ui-icon-newwin"}
@@ -854,7 +875,7 @@ function init() // All static one-time stuff is here
 	$("#mncDisabledText").hide();
 	$("#loadingGif").hide();
 	$("#searchDiv").hide();
-	
+
 	$("#searchDialog").dialog({
 		autoOpen: false,
 		width: 218,
@@ -1019,8 +1040,8 @@ function init() // All static one-time stuff is here
 					});				
 				}
 	});
-	
-	loadCellData();
+
+	 loadCellData();
 }
 
 $(document).ready(function()

@@ -197,20 +197,6 @@ for($fileIndex; $fileIndex <= $endingFileIndex; $fileIndex++)
 	pg_query($conn, "DROP TABLE IF EXISTS $tempTableName");
 }
 
-writeLog("Creating info table..");
-$sql = "CREATE TABLE IF NOT EXISTS $generalTableName(
-			para text NOT NULL,
-			time timestamp,
-			sInfo text,
-			iInfo integer,
-			eInfo integer,
-			PRIMARY KEY (para))";
-$result = pg_query($conn, $sql);
-if (!$result) {
-	writeLog("An error occurred during general Table creation.");
-	exit;
-}
-
 writeLog("Populating info table..");
 $sql = "INSERT INTO $generalTableName VALUES ('$infoParam', CURRENT_TIMESTAMP, '$srcFileName', null, null)
 		ON CONFLICT (para) DO UPDATE SET time = CURRENT_TIMESTAMP, sInfo = '$startingFileIndex - $endingFileIndex', iInfo = $mode, eInfo = null";

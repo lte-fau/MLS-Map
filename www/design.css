@@ -101,22 +101,23 @@ h2{
 	margin: 3px;
 }
 #cvModeDiv label {
-	width: 160px;
+	width: 130px;
 	margin-left: 10px;
 }
 
 /*--- Radio Selector --- */
 #typeSelectDiv{
 	font-size: 12px;
-	margin: auto;
+	margin: 0px;
 	text-align: center;
 }
 #typeSelectDiv label {
-	width: 56px;
+	width: 30px;
+	margin-right: -5px;
 }
 
 #mncDisabledText{
-	font-size: 13px;
+	font-size: 12px;
 	text-align: center;
 }
 
@@ -135,12 +136,12 @@ h2{
 	border-radius: 3px;
 }
 #mncSelectDiv label{
-	width: 51px;
+	width: 16px;
 	text-align: center;
+	margin-right: -1px;
 }
 #mncLaAll{
-	width: 147px !important;
-	text-align: center;
+	width: 114px !important;
 }
 
 /*--- Buttons --- */

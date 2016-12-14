@@ -66,7 +66,7 @@ writeLog("*******************************************");
 writeLog("");
 
 writeLog("Downloading datafile..");
-file_put_contents($fileName, fopen("$dataURL", 'r'));
+//file_put_contents($fileName, fopen("$dataURL", 'r'));
 
 writeLog("Extracting file..");
 $buffer_size = 1048576; // 1MiB
@@ -181,7 +181,8 @@ $result = pg_query($conn, "CREATE UNLOGGED TABLE $tempTableName(
 	changeable smallint,
 	created bigint,
 	updated bigint,
-	averagesignal smallint)");
+	averagesignal smallint,
+	problem smallint)");
 if (!$result) {
 	writeLog("An error occurred during Table creation.");
 	exit;
@@ -190,7 +191,7 @@ if (!$result) {
 writeLog("Populating main table..");	
 $sql = "INSERT INTO $tempTableName SELECT DISTINCT ON (net, radio, area, mcc, cell) radio, mcc, net, area, cell, unit,
 	ST_SetSRID(ST_MakePoint(lon, lat), 4326) As pos,
-	range, samples, changeable, created, updated, averagesignal
+	range, samples, changeable, created, updated, averagesignal, 0 As problem
 	FROM $tempImportName";
 $result = pg_query($conn, $sql);	
 if (!$result) {
@@ -198,11 +199,21 @@ if (!$result) {
 	exit;
 }
 
+writeLog("Checking for invalid cells..");	
+$sql = "UPDATE $tempTableName t1 SET problem = 1 WHERE NOT (pos && (SELECT outline FROM mcc t2 WHERE t2.mcc = t1.mcc))";
+$result = pg_query($conn, $sql);	
+if (!$result) {
+	writeLog("Error checking cells.");
+	exit;
+}
+$rowsOutsideMcc = pg_affected_rows($result);
+writeLog("$rowsOutsideMcc rows affected.");
+
 writeLog("Creating primary key..");
 $tempTablePKey = $tempTableName . "_pkey";
 
-$result = pg_query($conn, "ALTER TABLE $tempTableName
-	ADD CONSTRAINT $tempTablePKey PRIMARY KEY (net, radio, area, mcc, cell)");
+$sql = "ALTER TABLE $tempTableName ADD CONSTRAINT $tempTablePKey PRIMARY KEY (net, radio, area, mcc, cell)";
+$result = pg_query($conn, $sql);
 if (!$result) {
 	writeLog("An error occurred during primary key creation.");
 	exit;
@@ -281,8 +292,8 @@ $stepsize = 50000;
 
 do{
 	$j = $i + $stepsize;
-	$sql = "UPDATE $tempLacTableName t1 SET cPos = ST_CENTROID(ST_COLLECT(ARRAY(SELECT t2.pos FROM $tempTableName t2 WHERE t2.area = t1.area AND t2.mcc = t1.mcc AND t2.net = t1.net AND t2.radio = t1.radio))),
-			outline = ST_NULLABLECONCAVEHULL(ST_COLLECT(ARRAY(SELECT t2.pos FROM $tempTableName t2 WHERE t2.area = t1.area AND t2.mcc = t1.mcc AND t2.net = t1.net AND t2.radio = t1.radio)), 0.99) 
+	$sql = "UPDATE $tempLacTableName t1 SET cPos = ST_CENTROID(ST_COLLECT(ARRAY(SELECT t2.pos FROM $tempTableName t2 WHERE t2.area = t1.area AND t2.mcc = t1.mcc AND t2.net = t1.net AND t2.radio = t1.radio AND problem = 0))),
+			outline = ST_NULLABLECONCAVEHULL(ST_COLLECT(ARRAY(SELECT t2.pos FROM $tempTableName t2 WHERE t2.area = t1.area AND t2.mcc = t1.mcc AND t2.net = t1.net AND t2.radio = t1.radio AND problem = 0)), 0.99) 
 			WHERE id BETWEEN $i AND $j";
 	$result = pg_query($conn, $sql);	
 	if (!$result) {
@@ -325,23 +336,9 @@ if (!$result) {
 	exit;
 }
 
-writeLog("Creating info table..");
-$result = pg_query($conn, "CREATE TABLE IF NOT EXISTS $generalTableName(
-	para text NOT NULL, 
-	time timestamp, 
-	sInfo text,
-	iInfo integer,
-	eInfo integer,
-	PRIMARY KEY (para))");
-
-if (!$result) {
-	writeLog("An error occurred during general Table creation.");
-	exit;
-}
-
 writeLog("Populating info table..");
-$sql = "INSERT INTO $generalTableName VALUES ('$infoParam', CURRENT_TIMESTAMP, '$srcFileName', null, null)
-	 ON CONFLICT (para) DO UPDATE SET time = CURRENT_TIMESTAMP, sInfo = '$srcFileName', iInfo = null, eInfo = null";
+$sql = "INSERT INTO $generalTableName VALUES ('$infoParam', CURRENT_TIMESTAMP, '$srcFileName', $rowsOutsideMcc, null)
+	 ON CONFLICT (para) DO UPDATE SET time = CURRENT_TIMESTAMP, sInfo = '$srcFileName', iInfo = $rowsOutsideMcc, eInfo = null";
 $result = pg_query($conn, $sql);	
 if (!$result) {
 	writeLog("Couldn't create Builddate Entry.");

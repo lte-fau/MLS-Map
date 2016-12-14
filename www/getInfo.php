@@ -6,14 +6,14 @@ session_start();
 $para = $_POST["para"];
 
 // Create connection
-include "../db/db-settings.php";
+include "admin/db-settings.php";
 $conn = pg_connect($connString)
 	or die('Could not connect: ' . pg_last_error());
 	
 // Build a Versionstring
 if($para == "DB_DATE_STRING") {
 	// Get MLS Date
-	$sql = "SELECT time FROM gInfo WHERE para = 'MLS_BUILD_DATE'";
+	$sql = "SELECT time, iInfo FROM gInfo WHERE para = 'MLS_BUILD_DATE'";
 	$result = pg_query($conn, $sql);
 
 	if (!$result) {
@@ -25,12 +25,12 @@ if($para == "DB_DATE_STRING") {
 	
 	if(pg_num_rows($result) == 1)
 	{
-		$res .= pg_fetch_result($result, 0, 0);
+		$res .= pg_fetch_result($result, 0, 0) . " with " . pg_fetch_result($result, 0, 1) . " problematic cells.";
 	} else
 		$res .= "No Data.";
 	
 	// Get OCID Date
-	$sql = "SELECT time FROM gInfo WHERE para = 'OCID_BUILD_DATE'";
+	$sql = "SELECT time, iInfo FROM gInfo WHERE para = 'OCID_BUILD_DATE'";
 	$result = pg_query($conn, $sql);
 
 	if (!$result) {
@@ -42,7 +42,7 @@ if($para == "DB_DATE_STRING") {
 	
 	if(pg_num_rows($result) == 1)
 	{
-		$res .= pg_fetch_result($result, 0, 0);
+		$res .= pg_fetch_result($result, 0, 0) . " with " . pg_fetch_result($result, 0, 1) . " problematic cells.";
 	} else
 		$res .= "No Data.";
 	
