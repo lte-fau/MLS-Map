@@ -6,18 +6,29 @@ include "db-settings.php";
 include "logHelper.php";
 
 //__________Params___________
-$mode = 1;								// Mode0 -> Merge last_measurements, Mode1 -> Create Database from local files, Mode2 -> Both
-$startingFileIndex = 1;					// First local filenumber witch to import
-$endingFileIndex = 15;					// Last local filenumber witch to import
-$dropExistingData = 1;					// Only dropped if importing local files
-$localFileName = "tmp/measurements_";	// A number and .csv.gz will be added later
-
 $mccs = array(
+				array("austria", 232),
 				array("germany", 262),
 				array("france", 208),
 				array("netherlands", 204),
-				array("austria", 232),
 				array("denmark", 238),
+				array("czech-republic", 230),
+				array("hungary", 216),
+				array("iceland", 274),
+				array("italy", 222),
+				array("liechtenstein", 295),
+				array("luxembourg", 270),
+				array("poland", 260),
+				array("romania", 226),
+				array("belgium", 206),
+				array("estonia", 248),
+				array("faroe-islands", 288),
+				array("finland", 244),
+				array("latvia", 247),
+				array("portugal", 268),
+				//array("russia", 250), Not working, contains multiple polygons
+				array("spain", 214),
+				array("turkey", 286),
 				array("switzerland", 228)
 			);
 
@@ -35,7 +46,6 @@ $starttime = $mtime;
 writeLog("");
 writeLog("*******************************************");
 writeLog("* Starting dbBuilder for Country Outlines *");
-writeLog("******** Area selective, Mode = $mode *********");
 writeLog("*******************************************");
 writeLog("");
 

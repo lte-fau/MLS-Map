@@ -26,7 +26,7 @@ $paraViewExtendFactor = 0.1;
 $paraMncDisableLevel = 8;
 
 $paraForceLacSortLevel = 8;
-$paraForceClusteredLacSortLevel = 9;
+$paraForceClusteredLacSortLevel = 8;
 $paraForceClusteredCellsLevel = 12;
 
 $paraCellClusterGridSize = 12;
@@ -147,7 +147,7 @@ if($mode == "cell")
 {
 	$res = $hash . "&&cell&&";
 	
-	$sql = "SELECT radio, mcc, net, area, cell, ST_X(pos), ST_Y(pos) FROM $mainTableName WHERE pos && ST_MakeEnvelope (
+	$sql = "SELECT radio, mcc, net, area, cell, ST_X(pos), ST_Y(pos), problem FROM $mainTableName WHERE pos && ST_MakeEnvelope (
 					$lonUL, $latUL, $lonOR, $latOR, 4326) AND radio IN ($inStringRadio) $inStringNet $inStringTime";
 	$result = pg_query($conn, $sql);
 	
@@ -159,7 +159,7 @@ if($mode == "cell")
 	for ($i = 0; $i < pg_num_rows($result); $i++)
 	{
 		$res .= pg_fetch_result($result, $i, 0) . '|' . pg_fetch_result($result, $i, 1) . '|' . pg_fetch_result($result, $i, 2) . '|' .  
-				pg_fetch_result($result, $i, 3) . '|' .  pg_fetch_result($result, $i, 4) . '|' . pg_fetch_result($result, $i, 5) . '|' . pg_fetch_result($result, $i, 6) . "##";
+				pg_fetch_result($result, $i, 3) . '|' .  pg_fetch_result($result, $i, 4) . '|' . pg_fetch_result($result, $i, 5) . '|' . pg_fetch_result($result, $i, 6) . '|' . pg_fetch_result($result, $i, 7) . "##";
 	}
 	
 }else if($mode == "cluster")
@@ -386,7 +386,7 @@ if($mode == "cell")
 		$res .= "DISABLED";
 	else
 	{	
-		$sql = "SELECT DISTINCT net FROM $mainTableName WHERE pos && ST_MakeEnvelope ($lonUL, $latUL, $lonOR, $latOR, 4326) AND radio IN ($inStringRadio) $inStringTime ORDER BY net";
+		$sql = "SELECT DISTINCT net FROM $mainTableName WHERE pos && ST_MakeEnvelope ($lonUL, $latUL, $lonOR, $latOR, 4326) AND radio IN ($inStringRadio) $inStringTime AND problem = 0 ORDER BY net";
 		$result = pg_query($conn, $sql);
 
 		if (!$result) {

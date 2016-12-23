@@ -34,13 +34,17 @@ if (!$result) {
 }
 
 $resStr = pg_fetch_result($result, 0, 0);
-preg_match('#\((.*?)\)#', $resStr, $data);
-$dArray = explode(",", $data[1]);
 
-foreach ($dArray as $sData)
+if($resStr != "")
 {
-	$fData = explode(" ", $sData);
-    $res .= $fData[0] . "|" . $fData[1] . "|" . $fData[2] . "&&";
+	preg_match('#\((.*?)\)#', $resStr, $data);
+	$dArray = explode(",", $data[1]);
+
+	foreach ($dArray as $sData)
+	{
+		$fData = explode(" ", $sData);
+		$res .= $fData[0] . "|" . $fData[1] . "|" . $fData[2] . "&&";
+	}
 }
 
 pg_close($conn);

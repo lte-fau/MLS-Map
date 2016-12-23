@@ -8,7 +8,7 @@ include "logHelper.php";
 //__________Params___________
 $mode = 1;								// Mode0 -> Merge last_measurements, Mode1 -> Create Database from local files, Mode2 -> Both
 $startingFileIndex = 1;					// First local filenumber witch to import
-$endingFileIndex = 15;					// Last local filenumber witch to import
+$endingFileIndex = 40;					// Last local filenumber witch to import
 $dropExistingData = 1;					// Only dropped if importing local files
 $localFileName = "tmp/measurements_";	// A number and .csv.gz will be added later
 

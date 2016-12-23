@@ -53,6 +53,9 @@ var autoLoad = true;
 var cellReqIsQueued = false;
 var timeoutHandle;
 
+var isNotifying = false;
+var notificationTimeoutHandle;
+
 //Ajax responce is only loaded if the newest request hasn't been answered. This prevents older but slower responces of overwriting newer Data
 var waitingForHash = 0;
 
@@ -208,12 +211,36 @@ function hashString(str)
     return hash;
 }
 
+function notify(str)
+{
+	if(isNotifying && typeof(str) === 'undefined')
+	{
+		isNotifying = false;
+		$("#notificationDiv").hide("slow");
+	}
+	else
+	{
+		if(!isNotifying)
+			$("#notificationDiv").empty();
+		
+		$("#notificationDiv").append("<p>" + str + "</p>");
+		
+		$("#notificationDiv").show("slow");
+		
+		isNotifying = true;
+		window.clearTimeout(notificationTimeoutHandle);
+		notificationTimeoutHandle = window.setTimeout(notify, 4000);
+		$("#loadingGif").hide();
+	}
+}
+
 function stopCellView()
 {
 	autoLoad = false;
 	
 	$('input:radio[name="cvModeS"]').prop('checked', false);
 	$("#cvModeDiv :input").checkboxradio("refresh");
+	$("#mncSelectDiv").children().hide();
 	
 	clearMap();
 }
@@ -235,27 +262,29 @@ function clearMap()
 		map.removeLayer(sCellLayer);
 	
 	if(map.hasLayer(measLayer))
-		map.removeLayer(measLayer);	
+		map.removeLayer(measLayer);
+	
+	$("#informationText").hide("fast");
 }
 
-function searchLac()
+function loadLacData(mcc, mnc, area, radio)
 {
 	$("#loadingGif").show();
-	$.post( 'searchCells.php', { type: 'lac', mcc: $("#sMcc").val(), mnc: $("#sMnc").val(), lac: $("#sLac").val(), radio: $("#sRadio").val(), dataSource: paraDataSource}, function( data )
+	$.post( 'searchCells.php', { type: 'lac', mcc: mcc, mnc: mnc, lac: area, radio: radio, dataSource: paraDataSource}, function( data )
 	{
 		stopCellView();
 
 		var sData = data.split("&&");
 		
-		if(sData.length == 1)
+		if(sData[0] == "ERR")
 		{
-			alert("Invalid Data Received.");
+			notify("No data found.");
 			return;
 		}
 		
-		if(sData[0] == "ERR")
+		if(sData.length <= 2)
 		{
-			alert("No data found.");
+			notify("Invalid Data Received.");
 			return;
 		}
 		
@@ -272,32 +301,72 @@ function searchLac()
 		for (var i = 0; i < cData.length - 1; i++)
 		{
 			var cellData = cData[i].split("|");
-			var marker = new L.Marker([parseFloat(cellData[2]), parseFloat(cellData[1])], {displayNumber: 1, mcc: $("#sMcc").val(), net: $("#sMnc").val(), area: $("#sLac").val(), cid: cellData[0], radio: $("#sRadio").val()})
-							.setIcon(redMarkerIcon)
-							.bindPopup("<center><b>" +  $("#sRadio").val() + "<br>CID: " + cellData[0] + "</b></center><br>LAC: " + 
-									$("#sLac").val() + "<br>MNC: " + $("#sMnc").val() + "<br>MCC: " + $("#sMcc").val())
-							.on('dblclick', function(e) {
-									loadMeasData(this);
-							});
-								
+			
+			var marker = getCellMarker(parseFloat(cellData[2]), parseFloat(cellData[1]), mcc, mnc, area, cellData[0], radio, parseInt(cellData[3]));
 			lacMarkerCluster.addLayer(marker);
 		}
-		var polyLayer = L.geoJson(JSON.parse(sData[2])).bindPopup("<center><b>" +  $("#sRadio").val() + "</b></center><br>LAC: " + $("#sLac").val() + 
-														"<br>MNC: " + $("#sMnc").val() + "<br>MCC: " + $("#sMcc").val());
-		var polyLayer2 = L.geoJson(JSON.parse(sData[3]));
+
+		var lacData = sData[3].split("|");
+		if(sData[2] != "") // If sData[2] is empty, lacData[0] will be too.
+		{
+			var polyLayer2 = L.geoJson(JSON.parse(lacData[0]));
+			sLACPolyLayer.addLayer(polyLayer2);
+			
+			var polyLayer = L.geoJson(JSON.parse(sData[2])).bindPopup("<center><b>" +  radio + "</b></center><br>LAC: " + area + "<br>MNC: " + mnc + "<br>MCC: " + mcc);
+			sLACPolyLayer.addLayer(polyLayer);
+				
+			map.fitBounds(polyLayer2.getBounds());
+		} else
+		{
+			notify("Data not trustworthy. No Polygon Available.");
+			map.fitBounds(lacMarkerCluster.getBounds());
+		}
 		
 		sLACCellLayer.addLayer(lacMarkerCluster);
-		sLACPolyLayer.addLayer(polyLayer2);
-		sLACPolyLayer.addLayer(polyLayer);
+		
+		$("#informationText").empty();
+		$("#informationText").append("<strong>LAC Information:</strong></br>");
+		$("#informationText").append("<center><b>" + radio + "</b></center><br>MCC: " + mcc + 
+			"<br>MNC: " + mnc + "<br>LAC: " + area + "<br>Size: " + lacData[1] + "<br>Untrustworthy cells: " + lacData[2]);
+		$("#informationText").show("fast");
+		
 		
 		if($("#sLACcellVis").is(":checked"))
 			map.addLayer(sLACCellLayer);
 
 		map.addLayer(sLACPolyLayer);
-		map.fitBounds(lacMarkerCluster.getBounds());
+		
 		
 		$("#loadingGif").hide();
 	});
+}
+
+function getCellMarker(lon, lat, mcc, mnc, area, cid, radio, problem)
+{
+	switch(problem)
+	{
+		case 0:
+			var cStatus = "";
+			break;
+		case 1:
+			var cStatus = "<center><b>Cell location suspicious: <br> Not in correct country.</b></center><br>";
+			break;
+		case 2:
+			var cStatus = "<center><b>Cell location suspicious: <br> To far from location area.</b></center><br>";
+			break;
+		default:
+			var cStatus = "";
+	}
+	
+	var marker = new L.Marker([lon, lat], {displayNumber: 1, mcc: mcc, net: mnc, area: area, cid: cid, radio: radio, problemText: cStatus})
+		.bindPopup(cStatus + "<center><b>" +  radio + "</b></center><br>MCC: " + mcc + 
+				"<br>MNC: " + mnc + "<br>LAC: " + area + 
+				"<br>CID: " + cid).setIcon(greenMarkerIcon)
+		.on('dblclick', function(e) {
+			loadMeasData(this);
+		});
+								
+	return marker;
 }
 
 function loadMeasData(mkr)
@@ -305,26 +374,33 @@ function loadMeasData(mkr)
 	if (paraDataSource == "ocid")
 	{
 		var mCord = mkr.getLatLng();
-
+		$("#loadingGif").show();
 		$.post( 'getMeasData.php', {mcc: mkr.options.mcc, net: mkr.options.net, area: mkr.options.area, cid: mkr.options.cid, radio: mkr.options.radio}, function( measData )
 		{
 			var mData = measData.split("&&");
 			if(mData.length == 2)
 			{
-				alert("Error in Response: " + measData);
-				return;
-			}
-			if(mData.length == 3)
-			{
-				alert("No Data.");
+				notify("No Data.");
 				return;
 			}
 			
 			stopCellView();
 			
+			$("#informationText").empty();
+			$("#informationText").append("<strong>Cell Information:</strong></br>");
+			$("#informationText").append("<center><b>" +  mkr.options.radio + "</b></center><br>MCC: " + mkr.options.mcc + 
+				"<br>MNC: " + mkr.options.net + "<br>LAC: " + mkr.options.area + "<br>CID: " + mkr.options.cid + "<br> " + mkr.options.problemText);
+			$("#informationText").show("fast");
+			
 			measLayer = L.featureGroup();
 			var measCluster = L.markerClusterGroup({
 				iconCreateFunction: function (cluster) {
+								var markers = cluster.getAllChildMarkers();
+								var nOpacity = 0;
+								for (var i = 0; i < cluster.getChildCount(); i++)
+									nOpacity += markers[i].options.opacity;
+								nOpacity /= cluster.getChildCount();
+								cluster.options.opacity = nOpacity;
 								return blueMarkerClusterIcon;
 							},
 					maxClusterRadius: 4,
@@ -366,8 +442,11 @@ function loadMeasData(mkr)
 			measLayer.addLayer(measCluster);
 			map.addLayer(measLayer);
 			map.fitBounds(measLayer.getBounds());
+			
+			$("#loadingGif").hide();
 		})
-	}
+	}else
+		notify("No Measurement data available for MLS.");
 }
 
 function loadCellData()
@@ -437,14 +516,14 @@ function loadCellData()
 			
 			if(sMncData.length == 2)
 			{
-				alert("Error in Response: " + mncData);
+				notify("Error in Response: " + mncData);
 				return;
 			}
 			
 			if(sMncData[2] == "DISABLED")
 			{
 				mncVar = "ALL";
-				$("#mncSelectDiv").children().hide();
+				$("#mncSelectDiv").children().hide("fast");
 				$("#mncAll").prop('checked', true);
 				$("#mncLaAll").show();
 				$("#mncDisabledText").show("fast");
@@ -512,7 +591,7 @@ function loadCellData()
 				var sData = data.split("&&");
 				if(sData.length == 2)
 				{
-					alert("Error in Response: " + data);
+					notify("Error in Response: " + data);
 					return;
 				}
 				
@@ -561,14 +640,7 @@ function loadCellData()
 						for (var i = 0; i < (cData.length - 1); i++)
 						{
 							var clusterData = cData[i].split("|");
-							
-							var marker = new L.Marker([parseFloat(clusterData[6]), parseFloat(clusterData[5])], {displayNumber: 1, mcc: clusterData[1], net: clusterData[2], area: clusterData[3], cid: clusterData[4], radio: clusterData[0].trim()})
-								.bindPopup("<center><b>" +  clusterData[0] + "</b></center><br>MCC: " + clusterData[1] + 
-										"<br>MNC: " + clusterData[2] + "<br>LAC: " + clusterData[3] + 
-										"<br>CID: " + clusterData[4]).setIcon(greenMarkerIcon)
-								.on('dblclick', function(e) {
-									loadMeasData(this);
-								});
+							var marker = getCellMarker(parseFloat(clusterData[6]), parseFloat(clusterData[5]), clusterData[1], clusterData[2], clusterData[3], clusterData[4], clusterData[0], parseInt(clusterData[7]));
 							mlsMarkerCluster.addLayer(marker);
 						}
 						
@@ -648,10 +720,13 @@ function loadCellData()
 								if(!paraFilterLACs || (parseInt(clusterData[4]) >= paraLacFilterLimit))
 								{
 									clusterData[1] = clusterData[1].replace(/\s+/g, '');
-									var polyLayer = L.geoJson(JSON.parse(clusterData[7])).bindPopup("<center><b>" +  clusterData[1] + 
-													"</b></center><br>LAC: " + clusterData[0] + 
-													"<br>MNC: " + clusterData[2] + 
-													"<br>MCC: " + clusterData[3]);
+									if(clusterData[7] != '')
+									{
+										var polyLayer = L.geoJson(JSON.parse(clusterData[7])).bindPopup("<center><b>" +  clusterData[1] + 
+														"</b></center><br>LAC: " + clusterData[0] + 
+														"<br>MNC: " + clusterData[2] + 
+														"<br>MCC: " + clusterData[3]);
+									}
 									
 									var marker = new L.Marker([parseFloat(clusterData[6]), parseFloat(clusterData[5])], 
 																	{displayNumber: 1, lacPoly: polyLayer, lac: clusterData[0],
@@ -671,7 +746,7 @@ function loadCellData()
 													})
 												.on('mouseover', function (e) {
 													cvLACPolyHoverLayer.clearLayers();
-													cvLACPolyHoverLayer.addLayer(L.geoJson(this.options.lacPoly.toGeoJSON()));
+													cvLACPolyHoverLayer.addLayer(this.options.lacPoly);
 													this.openPopup();
 													})
 												.on('mouseout', function (e) {
@@ -692,7 +767,7 @@ function loadCellData()
 													$("#sLac").val(this.options.lac);
 													$("#sRadio").val(this.options.radio);
 													$("#sId").val("");
-													searchLac();
+													loadLacData(this.options.mcc, this.options.mnc, this.options.lac, this.options.radio);
 												})
 												.setIcon(lacMarkerIcon);
 									mlsMarkerCluster.addLayer(marker);
@@ -728,11 +803,11 @@ function loadCellData()
 						var heatLayer = L.heatLayer(latlngArray, {max: maxValue, blur: paraHMBlur, radius: paraHMRadius, maxZoom: mZoom});
 						cellViewLayer.addLayer(heatLayer);
 						
-					}else alert("Error in Response: " + data);
+					}else notify("Error in Response: " + data);
 					
 					if(typeof mlsMarkerCluster !== 'undefined')
-						
 						cellViewLayer.addLayer(mlsMarkerCluster);
+					
 					map.addLayer(cellViewLayer);
 					
 					$("#loadingGif").hide();
@@ -806,7 +881,7 @@ function init() // All static one-time stuff is here
 	map = L.map('map', {
 		center: [49.574, 11.0294],
 		zoom: 14,
-		layers: [osmLayer, otmLayer]
+		layers: [osmLayer]
 	});
 	
 	var baseMaps = {
@@ -839,7 +914,7 @@ function init() // All static one-time stuff is here
 		timeout: paraAJAXTimeout,
 		error: function(x, t, m) {
 			if(t==="timeout")
-				alert("Server took to long to respond. May be overloaded?");
+				notify("Server took to long to respond. May be overloaded?");
 			waitingForHash = 0;
 			$("#loadingGif").hide();
 		}
@@ -872,7 +947,9 @@ function init() // All static one-time stuff is here
 		icons: {secondary: "ui-icon-newwin"}
 	});
 	
+	$("#notificationDiv").hide();
 	$("#mncDisabledText").hide();
+	$("#informationText").hide();
 	$("#loadingGif").hide();
 	$("#searchDiv").hide();
 
@@ -884,7 +961,7 @@ function init() // All static one-time stuff is here
 						text: "Search",
 						click: function() {
 							if($("#sId").val() == "")
-								searchLac();
+								loadLacData($("#sMcc").val(), $("#sMnc").val(), $("#sLac").val(), $("#sRadio").val());
 							else
 							{
 								$.post( 'searchCells.php', { type: 'cell', mcc: $("#sMcc").val(), mnc: $("#sMnc").val()
@@ -892,11 +969,11 @@ function init() // All static one-time stuff is here
 								{
 									if(data == "MULTIPLE")
 									{
-										alert("Multiple Cells Found.");
+										notify("Multiple Cells Found.");
 										return;
 									} else if(data == "NONE")
 									{
-										alert("No Cell Found.");
+										notify("No Cell Found.");
 										return;
 									}
 										
@@ -904,7 +981,7 @@ function init() // All static one-time stuff is here
 									
 									if(lonlat.length == 1)
 									{
-										alert("Invalid Data Received. Database Error?");
+										notify("Invalid Data Received. Database Error?");
 										return;
 									}
 									stopCellView();

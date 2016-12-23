@@ -30,6 +30,7 @@
 <body>
 
 	<div id="mainDiv">
+		<div class="ui-state-highlight" id="notificationDiv"></div>
 		<div id="map"></div>
 		<div id="controlDiv">
 			<h1>Mode Select</h1>
@@ -51,12 +52,10 @@
 
 			<h2>Select MNCs</h2>
 			
-			<div class="ui-widget" id="mncDisabledText">
-				<div class="ui-state-highlight ui-corner-all" style="margin-top: 20px; padding: 0 .7em;">
+			<div class="ui-widget ui-state-highlight ui-corner-all" id="mncDisabledText">
 					<p><span class="ui-icon ui-icon-info" style="float: left; margin-right: .3em;"></span>
 					<strong>INFO:</strong> MNC Selection List is disabled on low zoom levels!</p>
-				</div>
-			</div>				
+			</div>
 			<div id="mncSelectDiv">
 				<input type="checkbox" class="mncSelect" id="mncAll" checked /><label id="mncLaAll" for="mncAll">Show All</label>
 			</div>
@@ -65,8 +64,12 @@
 			<button type="Button" id="settingsBtn" class="btnBig">Settings..</button>
 			<p>
 			<button type="Button" id="sBtn" class="btnBig">Search..</button>
-			<p><p>
 			<div id="buildInfo"></div>
+			
+			<div class="ui-widget ui-state-highlight ui-corner-all" id="informationText">
+			</div>
+			
+			<p>
 			<div id="loadingGif"></div>
 			<div id="srcLink"><a href="https://github.com/lte-fau/MLS-Map/" target="_blank">Source</a></div>
 		</div>

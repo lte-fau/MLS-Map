@@ -61,7 +61,7 @@ if($type == 'cell')
 		$res = "NONE";
 } else if($type == 'lac')
 {
-	$sql = "SELECT cell, ST_X(pos), ST_Y(pos) FROM $mainTableName WHERE mcc = $mcc AND net = $mnc AND area = $lac AND radio = '$radio'";
+	$sql = "SELECT cell, ST_X(pos), ST_Y(pos), problem FROM $mainTableName WHERE mcc = $mcc AND net = $mnc AND area = $lac AND radio = '$radio'";
 	$result = pg_query($conn, $sql);
 
 	if (!$result) {
@@ -70,29 +70,33 @@ if($type == 'cell')
 	}
 	
 	if(pg_num_rows($result) > 0)
+	{
 		$res = 'LAC&&';
+		
+		for ($i = 0; $i < pg_num_rows($result); $i++)
+			$res .= pg_fetch_result($result, $i, 0) . '|' .  pg_fetch_result($result, $i, 1) . '|' . pg_fetch_result($result, $i, 2) . '|' . pg_fetch_result($result, $i, 3) . "##";
+		
+		$sql = "SELECT ST_AsGeoJSON(ST_CONVEXHULL(ST_COLLECT(pos))) FROM $mainTableName WHERE mcc = $mcc AND net = $mnc AND area = $lac AND radio = '$radio' AND problem = 0 GROUP BY mcc, net, area, radio";
+		$result = pg_query($conn, $sql);
+		if (!$result) {
+			echo "An error occurred while reading Data2.";
+			exit;
+		}
+		
+		$res .= "&&";
+		if(pg_num_rows($result) > 0)
+			$res .= pg_fetch_result($result, 0, 0);
+
+		$sql = "SELECT ST_AsGeoJSON(outline), size, invalidCells FROM $lacTableName WHERE mcc = $mcc AND net = $mnc AND area = $lac AND radio = '$radio'";
+		$result = pg_query($conn, $sql);
+		if (!$result) {
+			echo "An error occurred while reading Data3.";
+			exit;
+		}
+		$res .= "&&" . pg_fetch_result($result, 0, 0) . '|' . pg_fetch_result($result, 0, 1) . '|' . pg_fetch_result($result, 0, 2);
+	}
 	else
 		$res = 'ERR&&';
-	
-	for ($i = 0; $i < pg_num_rows($result); $i++)
-		$res .= pg_fetch_result($result, $i, 0) . '|' .  pg_fetch_result($result, $i, 1) . '|' . pg_fetch_result($result, $i, 2) . "##";
-	
-	$sql = "SELECT ST_AsGeoJSON(ST_CONVEXHULL(ST_COLLECT(pos))) FROM $mainTableName WHERE mcc = $mcc AND net = $mnc AND area = $lac AND radio = '$radio' GROUP BY mcc, net, area, radio";
-	$result = pg_query($conn, $sql);
-	if (!$result) {
-		echo "An error occurred while reading Data2.";
-		exit;
-	}
-	$res .= "&&" . pg_fetch_result($result, 0, 0);
-
-	//$sql = "SELECT ST_AsGeoJSON(outline) FROM $lacTableName WHERE mcc = $mcc AND net = $mnc AND area = $lac AND radio = '$radio'";
-	$sql = "SELECT ST_AsGeoJSON(outline) FROM mcc WHERE mcc = 208";
-	$result = pg_query($conn, $sql);
-	if (!$result) {
-		echo "An error occurred while reading Data2.";
-		exit;
-	}
-	$res .= "&&" . pg_fetch_result($result, 0, 0);
 } else
 	die("Invalid Parameters");
 

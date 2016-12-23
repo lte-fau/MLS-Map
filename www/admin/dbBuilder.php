@@ -65,8 +65,17 @@ writeLog("******* Starting dbBuilder for $argv[1] *******");
 writeLog("*******************************************");
 writeLog("");
 
-writeLog("Downloading datafile..");
-//file_put_contents($fileName, fopen("$dataURL", 'r'));
+if($dataURL != '')
+{
+	if(substr($dataURL, 0, 49) !== "https://d17pt8qph6ncyq.cloudfront.net/export/MLS-" && $argv[1] != "ocid")
+	{
+		writeLog("URL invalid.");
+		exit;
+	}
+	writeLog("Downloading datafile..");
+	file_put_contents($fileName, fopen("$dataURL", 'r'));
+}else
+	writeLog("No URL given. Using local file instead.");
 
 writeLog("Extracting file..");
 $buffer_size = 1048576; // 1MiB
@@ -118,8 +127,6 @@ if($argv[1] == "mls")
 }
 
 $srcFileName = str_replace('tmp/', '', $outputFileName); 
-
-writeLog("All done! Starting DbBuilder..");
 
 // Create connection
 $conn = pg_connect($connString . " sslmode=disable")
@@ -199,7 +206,7 @@ if (!$result) {
 	exit;
 }
 
-writeLog("Checking for invalid cells..");	
+writeLog("Checking for cells outside of their country..");	
 $sql = "UPDATE $tempTableName t1 SET problem = 1 WHERE NOT (pos && (SELECT outline FROM mcc t2 WHERE t2.mcc = t1.mcc))";
 $result = pg_query($conn, $sql);	
 if (!$result) {
@@ -226,6 +233,7 @@ if (!$result) {
 	writeLog("Couldn't create $tempGixName.");
 	exit;
 }
+/*
 
 writeLog("Clustering spatial index..");
 $sql = "CLUSTER $tempTableName USING $tempGixName;";
@@ -233,9 +241,8 @@ $result = pg_query($conn, $sql);
 if (!$result) {
 	writeLog("Couldn't cluster $tempGixName.");
 	exit;
-}
+}*/
 
-// All writes done. Set table to Logged.
 pg_query($conn, "ALTER TABLE $tempTableName SET LOGGED");
 
 writeLog("Analyzing $tempTableName Table..");
@@ -255,7 +262,8 @@ $sql = "CREATE TABLE $tempLacTableName(
 	cPos geometry(POINT, 4326),
 	outline geometry(GEOMETRY, 4326),
 	size integer,
-	id SERIAL)";
+	invalidCells integer,
+	tempDist real)";
 $result = pg_query($conn, $sql);
 if (!$result) {
 	writeLog("Couldn't create LAC Table.");
@@ -285,27 +293,53 @@ if (!$result) {
 	exit;
 }
 
+writeLog("Computing LAC center points..");
+// ST_GeometricMedian much better than ST_Centroid. Needs PostGIS 2.3
+$sql = "UPDATE $tempLacTableName t1 SET cPos = ST_Centroid(ST_COLLECT(ARRAY(SELECT t2.pos FROM $tempTableName t2 WHERE t2.area = t1.area AND t2.mcc = t1.mcc AND t2.net = t1.net AND t2.radio = t1.radio AND problem = 0)))";
+$result = pg_query($conn, $sql);	
+if (!$result) {
+	writeLog("Error Computing LAC centers.");
+	exit;
+}
+
+writeLog("Computing Cell distance to LAC center..");
+$sql = "UPDATE $tempLacTableName t1 SET tempDist = (SELECT avg(ST_Distance(t2.pos, t1.cPos)) FROM $tempTableName t2 WHERE t2.area = t1.area AND t2.mcc = t1.mcc AND t2.net = t1.net AND t2.radio = t1.radio)";
+$result = pg_query($conn, $sql);	
+if (!$result) {
+	writeLog("Error Computing LAC distances.");
+	exit;
+}
+
+writeLog("Checking LAC cells for outliers..");
+$sql = "UPDATE $tempTableName t1 SET problem = 2 WHERE ST_Distance(pos, (SELECT cPos FROM $tempLacTableName t2 WHERE t2.area = t1.area AND t2.mcc = t1.mcc AND t2.net = t1.net AND t2.radio = t1.radio))
+														> (5 * (SELECT tempDist FROM $tempLacTableName t2 WHERE t2.area = t1.area AND t2.mcc = t1.mcc AND t2.net = t1.net AND t2.radio = t1.radio))";
+$result = pg_query($conn, $sql);	
+if (!$result) {
+	writeLog("Error checking cells.");
+	exit;
+}
+$rowsFarFromArea = pg_affected_rows($result);
+writeLog("$rowsFarFromArea rows affected.");
+
+
 writeLog("Computing LAC geometry..");
+$sql = "UPDATE $tempLacTableName t1 SET outline = ST_NULLABLECONCAVEHULL(ST_COLLECT(ARRAY(SELECT t2.pos FROM $tempTableName t2 WHERE t2.area = t1.area AND t2.mcc = t1.mcc AND t2.net = t1.net AND t2.radio = t1.radio AND problem = 0)), 0.99)";
+$result = pg_query($conn, $sql);	
+if (!$result) {
+	writeLog("Error Computing LAC geometry.");
+	exit;
+}
 
-$i = 0;
-$stepsize = 50000;
+writeLog("Counting invalid cells of each LAC..");
+$sql = "UPDATE $tempLacTableName t1 SET invalidCells = (SELECT Count(*) FROM $tempTableName t2 WHERE t2.area = t1.area AND t2.mcc = t1.mcc AND t2.net = t1.net AND t2.radio = t1.radio AND problem <> 0)";
+$result = pg_query($conn, $sql);	
+if (!$result) {
+	writeLog("Error Counting cells.");
+	exit;
+}
 
-do{
-	$j = $i + $stepsize;
-	$sql = "UPDATE $tempLacTableName t1 SET cPos = ST_CENTROID(ST_COLLECT(ARRAY(SELECT t2.pos FROM $tempTableName t2 WHERE t2.area = t1.area AND t2.mcc = t1.mcc AND t2.net = t1.net AND t2.radio = t1.radio AND problem = 0))),
-			outline = ST_NULLABLECONCAVEHULL(ST_COLLECT(ARRAY(SELECT t2.pos FROM $tempTableName t2 WHERE t2.area = t1.area AND t2.mcc = t1.mcc AND t2.net = t1.net AND t2.radio = t1.radio AND problem = 0)), 0.99) 
-			WHERE id BETWEEN $i AND $j";
-	$result = pg_query($conn, $sql);	
-	if (!$result) {
-		writeLog("Error Computing LAC geometry.");
-		exit;
-	}
-	$i = $j;
-	writeLog("$j complete!");
-} while(pg_affected_rows($result) > 0);
-
-writeLog("Droping id column..");
-$sql = "ALTER TABLE $tempLacTableName DROP COLUMN id";
+writeLog("Droping distance column..");
+$sql = "ALTER TABLE $tempLacTableName DROP COLUMN tempDist";
 $result = pg_query($conn, $sql);
 if (!$result) {
 	writeLog("Couldn't drop column.");
@@ -336,9 +370,10 @@ if (!$result) {
 	exit;
 }
 
+$problematicCells = $rowsOutsideMcc + $rowsFarFromArea;
 writeLog("Populating info table..");
-$sql = "INSERT INTO $generalTableName VALUES ('$infoParam', CURRENT_TIMESTAMP, '$srcFileName', $rowsOutsideMcc, null)
-	 ON CONFLICT (para) DO UPDATE SET time = CURRENT_TIMESTAMP, sInfo = '$srcFileName', iInfo = $rowsOutsideMcc, eInfo = null";
+$sql = "INSERT INTO $generalTableName VALUES ('$infoParam', CURRENT_TIMESTAMP, '$srcFileName', $problematicCells, null)
+	 ON CONFLICT (para) DO UPDATE SET time = CURRENT_TIMESTAMP, sInfo = '$srcFileName', iInfo = $problematicCells, eInfo = null";
 $result = pg_query($conn, $sql);	
 if (!$result) {
 	writeLog("Couldn't create Builddate Entry.");
