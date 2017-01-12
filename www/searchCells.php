@@ -42,7 +42,7 @@ $conn = pg_connect($connString)
 	
 if($type == 'cell')
 {
-	$sql = "SELECT ST_X(pos), ST_Y(pos) FROM $mainTableName WHERE mcc = $mcc AND net = $mnc AND area = $lac AND cell = $cid AND radio = '$radio'";
+	$sql = "SELECT ST_X(pos), ST_Y(pos), problem FROM $mainTableName WHERE mcc = $mcc AND net = $mnc AND area = $lac AND cell = $cid AND radio = '$radio'";
 	$result = pg_query($conn, $sql);
 
 	if (!$result) {
@@ -51,11 +51,8 @@ if($type == 'cell')
 	}
 	
 	if(pg_num_rows($result) == 1)
-	{
-		$lat = pg_fetch_result($result, 0, 0);
-		$lon = pg_fetch_result($result, 0, 1);
-		$res = "$lat|$lon";
-	} else if(pg_num_rows($result) > 1)
+		$res = pg_fetch_result($result, 0, 0) . "|" . pg_fetch_result($result, 0, 1) . "|" . pg_fetch_result($result, 0, 2);
+	else if(pg_num_rows($result) > 1)
 		$res = "MULTIPLE";
 	else
 		$res = "NONE";

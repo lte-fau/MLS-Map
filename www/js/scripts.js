@@ -220,11 +220,10 @@ function notify(str)
 	}
 	else
 	{
-		if(!isNotifying)
+		//if(!isNotifying) // Leaflet calling dblClick event twice?
 			$("#notificationDiv").empty();
 		
 		$("#notificationDiv").append("<p>" + str + "</p>");
-		
 		$("#notificationDiv").show("slow");
 		
 		isNotifying = true;
@@ -234,14 +233,42 @@ function notify(str)
 	}
 }
 
+function setUrlParams(sMode, sMcc, sMnc, sLac, sRadio, sCid)
+{
+	// Params needed: displayMode
+	// If displayMode is any cell view mode: radio, mncs, mapzoom, mapcenter
+	// If displayMode is search Mode: identifying parameters mcc, mnc, lac, radio, cid (if cell)
+	
+	switch(sMode){
+		case "s":
+			if(sCid ===  null)
+				var params = {m: sMode, c: sMcc, n: sMnc, a: sLac, r: sRadio};
+			else
+				var params = {m: sMode, c: sMcc, n: sMnc, a: sLac, r: sRadio, i: sCid};
+			break;
+		case "m":
+			var params = {m: sMode, c: sMcc, n: sMnc, a: sLac, r: sRadio, i: sCid};
+			break;
+		case "norm":
+		case "lacSort":
+		case "heat":
+			var mCenter = map.getCenter();
+			var params = {m: sMode, z: map.getZoom(), la: mCenter.lat, lo: mCenter.lng, n: sMnc, r: sRadio};
+			break;
+		default:
+	}
+	
+	var str = "?" + jQuery.param(params);
+	window.history.replaceState('', '', str);
+}
+
 function stopCellView()
 {
 	autoLoad = false;
 	
 	$('input:radio[name="cvModeS"]').prop('checked', false);
 	$("#cvModeDiv :input").checkboxradio("refresh");
-	$("#mncSelectDiv").children().hide();
-	
+	$("#mncDiv").hide("fast");
 	clearMap();
 }
 
@@ -267,13 +294,51 @@ function clearMap()
 	$("#informationText").hide("fast");
 }
 
+function search()
+{
+	if($("#sId").val() == "")
+		loadLacData($("#sMcc").val(), $("#sMnc").val(), $("#sLac").val(), $("#sRadio").val());
+	else
+	{
+		sMode = "lac";
+		$.post( 'searchCells.php', { type: 'cell', mcc: $("#sMcc").val(), mnc: $("#sMnc").val()
+							   , lac: $("#sLac").val(), cid: $("#sId").val(), radio: $("#sRadio").val(), dataSource: paraDataSource}, function( data )
+		{
+			if(data == "MULTIPLE")
+			{
+				notify("Multiple Cells Found.");
+				return;
+			} else if(data == "NONE")
+			{
+				notify("No Cell Found.");
+				return;
+			}
+				
+			var lonlatP = data.split("|");
+			
+			if(lonlatP.length < 3)
+			{
+				notify("Invalid Data Received. Database Error?");
+				return;
+			}
+			
+			stopCellView();
+			setUrlParams("s", $("#sMcc").val(), $("#sMnc").val(), $("#sLac").val(), $("#sRadio").val(), $("#sId").val());
+			
+			sCellLayer = getCellMarker(parseFloat(lonlatP[1]), parseFloat(lonlatP[0]), $("#sMcc").val(), $("#sMnc").val(), $("#sLac").val(), $("#sId").val(), $("#sRadio").val(), lonlatP[2]);
+			map.addLayer(sCellLayer);
+			
+			map.panTo(new L.LatLng(parseFloat(lonlatP[1]), parseFloat(lonlatP[0])));
+			map.setZoom(15);
+		});
+	}
+}
+
 function loadLacData(mcc, mnc, area, radio)
 {
 	$("#loadingGif").show();
 	$.post( 'searchCells.php', { type: 'lac', mcc: mcc, mnc: mnc, lac: area, radio: radio, dataSource: paraDataSource}, function( data )
 	{
-		stopCellView();
-
 		var sData = data.split("&&");
 		
 		if(sData[0] == "ERR")
@@ -287,6 +352,9 @@ function loadLacData(mcc, mnc, area, radio)
 			notify("Invalid Data Received.");
 			return;
 		}
+		
+		stopCellView();
+		setUrlParams("s", mcc, mnc, area, radio, null);
 		
 		sLACPolyLayer = L.layerGroup();
 		sLACCellLayer = L.layerGroup();
@@ -341,23 +409,27 @@ function loadLacData(mcc, mnc, area, radio)
 	});
 }
 
-function getCellMarker(lon, lat, mcc, mnc, area, cid, radio, problem)
+function getCellProblemText(problem)
 {
 	switch(problem)
 	{
 		case 0:
-			var cStatus = "";
+			return "";
 			break;
 		case 1:
-			var cStatus = "<center><b>Cell location suspicious: <br> Not in correct country.</b></center><br>";
+			return "<center><b>Cell location suspicious: <br> Not in correct country.</b></center><br>";
 			break;
 		case 2:
-			var cStatus = "<center><b>Cell location suspicious: <br> To far from location area.</b></center><br>";
+			return "<center><b>Cell location suspicious: <br> To far from location area.</b></center><br>";
 			break;
 		default:
-			var cStatus = "";
+			return "";
 	}
-	
+}
+
+function getCellMarker(lon, lat, mcc, mnc, area, cid, radio, problem)
+{
+	var cStatus = getCellProblemText(problem);
 	var marker = new L.Marker([lon, lat], {displayNumber: 1, mcc: mcc, net: mnc, area: area, cid: cid, radio: radio, problemText: cStatus})
 		.bindPopup(cStatus + "<center><b>" +  radio + "</b></center><br>MCC: " + mcc + 
 				"<br>MNC: " + mnc + "<br>LAC: " + area + 
@@ -365,7 +437,7 @@ function getCellMarker(lon, lat, mcc, mnc, area, cid, radio, problem)
 		.on('dblclick', function(e) {
 			loadMeasData(this);
 		});
-								
+
 	return marker;
 }
 
@@ -375,7 +447,7 @@ function loadMeasData(mkr)
 	{
 		var mCord = mkr.getLatLng();
 		$("#loadingGif").show();
-		$.post( 'getMeasData.php', {mcc: mkr.options.mcc, net: mkr.options.net, area: mkr.options.area, cid: mkr.options.cid, radio: mkr.options.radio}, function( measData )
+		$.post( 'getMeasData.php', {mcc: mkr.options.mcc, net: mkr.options.net, area: mkr.options.area, cid: mkr.options.cid, radio: mkr.options.radio}, function(measData)
 		{
 			var mData = measData.split("&&");
 			if(mData.length == 2)
@@ -413,7 +485,7 @@ function loadMeasData(mkr)
 					a.layer.spiderfy();
 				});
 			
-			for (var i = 1; i < (mData.length - 1); i++)
+			for (var i = 2; i < (mData.length - 1); i++)
 			{
 				var sMeasData = mData[i].split("|");
 				
@@ -442,6 +514,8 @@ function loadMeasData(mkr)
 			measLayer.addLayer(measCluster);
 			map.addLayer(measLayer);
 			map.fitBounds(measLayer.getBounds());
+			
+			setUrlParams("m", mkr.options.mcc, mkr.options.net, mkr.options.area, mkr.options.radio, mkr.options.cid)
 			
 			$("#loadingGif").hide();
 		})
@@ -583,6 +657,8 @@ function loadCellData()
 			
 			if($("#cvHMMode").is(":checked"))
 				modeVar = "heat";
+			
+			setUrlParams(modeVar, null, mncVar, null, radioVar, null );
 			
 			waitingForHash = hashString(swBounds.lat + swBounds.lng + neBounds.lat + neBounds.lng + modeVar + mapZoom + radioVar + mncVar + ageVar + paraDataSource);
 					
@@ -865,15 +941,15 @@ function init() // All static one-time stuff is here
 {
 	// Init Map
 	osmLayer = L.tileLayer('http://{s}.tile.openstreetmap.de/tiles/osmde/{z}/{x}/{y}.png', {
-		attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, ' + 
-			' <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>',
+		attribution: 'Map data &copy; <a href="https://openstreetmap.org">OpenStreetMap</a> contributors, ' + 
+			' <a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>',
 		maxZoom: 18,
 		minZoom: 2,
 	});
 	
-	otmLayer = L.tileLayer('http://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
-		attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, Tiles:  &copy; <a href="http://opentopomap.org">OpenTopoMap</a>' + 
-			' <a href="http://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>',
+	otmLayer = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+		attribution: 'Map data &copy; <a href="https://openstreetmap.org">OpenStreetMap</a> contributors, Tiles:  &copy; <a href="https://opentopomap.org">OpenTopoMap</a>' + 
+			' <a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>',
 		maxZoom: 18,
 		minZoom: 2,
 	});
@@ -960,43 +1036,7 @@ function init() // All static one-time stuff is here
 		buttons: 	[{
 						text: "Search",
 						click: function() {
-							if($("#sId").val() == "")
-								loadLacData($("#sMcc").val(), $("#sMnc").val(), $("#sLac").val(), $("#sRadio").val());
-							else
-							{
-								$.post( 'searchCells.php', { type: 'cell', mcc: $("#sMcc").val(), mnc: $("#sMnc").val()
-													   , lac: $("#sLac").val(), cid: $("#sId").val(), radio: $("#sRadio").val(), dataSource: paraDataSource}, function( data )
-								{
-									if(data == "MULTIPLE")
-									{
-										notify("Multiple Cells Found.");
-										return;
-									} else if(data == "NONE")
-									{
-										notify("No Cell Found.");
-										return;
-									}
-										
-									var lonlat = data.split("|");
-									
-									if(lonlat.length == 1)
-									{
-										notify("Invalid Data Received. Database Error?");
-										return;
-									}
-									stopCellView();
-									
-									sCellLayer = L.marker([parseFloat(lonlat[1]), parseFloat(lonlat[0])], {mcc: $("#sMcc").val(), net: $("#sMnc").val(), area: $("#sLac").val(), cid: $("#sId").val(), radio: $("#sRadio").val()})
-											.on('dblclick', function(e) {
-												loadMeasData(this);
-											});
-				
-									map.addLayer(sCellLayer);
-									
-									map.panTo(new L.LatLng(parseFloat(lonlat[1]), parseFloat(lonlat[0])));
-									map.setZoom(15);
-								});
-							}
+							search();
 						}
 					},
 					{
@@ -1118,13 +1158,111 @@ function init() // All static one-time stuff is here
 				}
 	});
 
-	 loadCellData();
+	// Restore from URL Parameters
+    var uIndex = window.location.href.indexOf("?");
+    if (uIndex != -1)
+	{
+		var resArray = {};
+		var pString = decodeURIComponent(window.location.href.substring(uIndex + 1));
+		var pArray = pString.split("&");
+		
+		for (var i = 0; i < pArray.length; i++)
+		{
+			var uPar = pArray[i].split("=");
+			resArray[uPar[0]] = uPar[1];
+		}
+		
+		switch(resArray["m"]){
+			case "s":	// search Mode. Search for LAC or Cell dependend on if i is set
+				$("#sMcc").val(resArray["c"]);
+				$("#sMnc").val(resArray["n"]);
+				$("#sLac").val(resArray["a"]);
+				$("#sRadio").val(resArray["r"]);
+				if(resArray["i"] != undefined)
+					$("#sId").val(resArray["i"]);
+				search();
+				break;
+			case "m":	// Meas Mode. Create Marker and call getMeasData()
+				$("#sMcc").val(resArray["c"]);
+				$("#sMnc").val(resArray["n"]);
+				$("#sLac").val(resArray["a"]);
+				$("#sRadio").val(resArray["r"]);
+				$("#sId").val(resArray["i"]);
+				
+				
+				$.post( 'searchCells.php', {type: 'cell', mcc: $("#sMcc").val(), mnc: $("#sMnc").val()
+							   , lac: $("#sLac").val(), cid: $("#sId").val(), radio: $("#sRadio").val(), dataSource: paraDataSource}, function( data )
+				{
+					if(data == "MULTIPLE")
+					{
+						notify("Multiple Cells Found.");
+						return;
+					} else if(data == "NONE")
+					{
+						notify("No Cell Found.");
+						return;
+					}
+						
+					var lonlatP = data.split("|");
+					
+					if(lonlatP.length < 3)
+					{
+						notify("Invalid Data Received. Database Error?");
+						return;
+					}
+					
+					loadMeasData(getCellMarker(parseFloat(lonlatP[1]), parseFloat(lonlatP[0]), $("#sMcc").val(), $("#sMnc").val(), $("#sLac").val(), $("#sId").val(), $("#sRadio").val(), lonlatP[2]));
+				});
+				break;
+			case "norm":	// Cell view Modes. Set Map Location, Radio and Network settings and call loadCellData()
+			case "lacSort":
+			case "heat":
+				if(resArray["m"] == "lacSort")
+					$("#cvGLac").prop('checked', true);
+				if(resArray["m"] == "heat")
+					$("#cvHMMode").prop('checked', true);
+				$("#cvModeDiv :input").checkboxradio("refresh");
+				
+				map.setView([parseFloat(resArray["la"]), parseFloat(resArray["lo"])], parseInt(resArray["z"]));
+				
+				if(resArray["r"].indexOf("GSM") == -1)
+					$("#GSMBox").prop('checked', false);
+				if(resArray["r"].indexOf("UMTS") == -1)
+					$("#UMTSBox").prop('checked', false);
+				if(resArray["r"].indexOf("LTE") == -1)
+					$("#LTEBox").prop('checked', false);
+				$("#typeSelectDiv :input").checkboxradio("refresh");
+				
+				if(resArray["n"] != "ALL")
+					$("#mncAll").prop('checked', false);
+				
+				var mncs = resArray["n"].split("|")
+				for (var i = 0; i < (mncs.length - 1); i++)
+				{
+					if(typeof lastObject !== 'undefined')
+						lastObject.after("<input type='checkbox' id='mnc" + mncs[i] + 
+											"' class='mncSelect'/><label id='mncLa" + mncs[i] + "' for='mnc" + mncs[i] + "'>" + mncs[i] + "</label>");	
+					else
+						$("#mncLaAll").after("<input type='checkbox' id='mnc" + mncs[i] + 
+											"' class='mncSelect'/><label id='mncLa" + mncs[i] + "' for='mnc" + mncs[i] + "'>" + mncs[i] + "</label>");
+					lastObject = $("#mncLa" + mncs[i]);
+					$("#mnc" + mncs[i]).prop('checked', true);
+				}
+				$("#mncSelectDiv :input").checkboxradio({
+					icon: false
+				}).checkboxradio("refresh");
+				
+				loadCellData();
+				break;
+			default:
+		}
+	} else
+		loadCellData();
 }
 
 $(document).ready(function()
 {
 	init();
-	
 	map.on('dragend', function(e) {
 		if(autoLoad)
 			loadCellData();
@@ -1144,12 +1282,14 @@ $(document).ready(function()
 		//uncheck "Show all" if something else is clicked
 		if($(this).attr("id") != "mncAll")
 			$("#mncAll").prop('checked', false);
+
 		if(autoLoad)
 			loadCellData();
 	});
 	
 	$('input:radio[name="cvModeS"]').change(function(){
 		autoLoad = true;
+		$("#mncDiv").show("fast");
 		loadCellData();
 	});
 	
