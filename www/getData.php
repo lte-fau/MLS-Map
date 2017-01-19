@@ -1,5 +1,5 @@
 <?php
-/* Copyright (C) 2016  Lehrstuhl für Technische Elektronik, Friedrich-Alexander-Universität Erlangen-Nürnberg */
+/* Copyright (C) 2017  Lehrstuhl für Technische Elektronik, Friedrich-Alexander-Universität Erlangen-Nürnberg */
 /* https://github.com/lte-fau/MLS-Map/blob/master/LICENSE */
 session_start();
 
@@ -20,31 +20,18 @@ $nets = $_POST["nets"];
 $ageStamp = $_POST["ageStamp"];
 $dataSource = $_POST["dataSource"];
 
-
-// Get these params from db
-$paraViewExtendFactor = 0.1;
-$paraMncDisableLevel = 8;
-
-$paraForceLacSortLevel = 8;
-$paraForceClusteredLacSortLevel = 8;
-$paraForceClusteredCellsLevel = 12;
-
-$paraCellClusterGridSize = 12;
-$paraLacClusterGridSize = 15;
-
-$paraHeatGridSize = 40;
-$paraHeatMaxCellLevel = 9;
-$paraHeatUseLacLevel = 7;
+include "admin/db-settings.php";
+include "getSettings.php";
 
 
 if($dataSource == "ocid")
 {
-	$mainTableName = "ocid";
-	$lacTableName = "ocidLACs";
+	$mainTableName = $ocidCellTableName;
+	$lacTableName = $ocidLacTableName;
 } else if($dataSource == "mls")
 {
-	$mainTableName = "mls";
-	$lacTableName = "mlsLACs";
+	$mainTableName = $mlsCellTableName;
+	$lacTableName = $mlsLacTableName;
 } else
 	die("Invalid.");
 
@@ -137,17 +124,15 @@ if($ageStamp != 0)
 else
 	$inStringTime = "";
 
-include "admin/db-settings.php";
 $conn = pg_connect($connString)
 	or die('Could not connect: ' . pg_last_error());
-	
 	
 // Do different querys depending on inputs Strings
 if($mode == "cell")
 {
 	$res = $hash . "&&cell&&";
 	
-	$sql = "SELECT radio, mcc, net, area, cell, ST_X(pos), ST_Y(pos), problem FROM $mainTableName WHERE pos && ST_MakeEnvelope (
+	$sql = "SELECT radio, mcc, net, area, cell, ST_X(pos), ST_Y(pos), updated, problem FROM $mainTableName WHERE pos && ST_MakeEnvelope (
 					$lonUL, $latUL, $lonOR, $latOR, 4326) AND radio IN ($inStringRadio) $inStringNet $inStringTime";
 	$result = pg_query($conn, $sql);
 	
@@ -158,8 +143,8 @@ if($mode == "cell")
 	
 	for ($i = 0; $i < pg_num_rows($result); $i++)
 	{
-		$res .= pg_fetch_result($result, $i, 0) . '|' . pg_fetch_result($result, $i, 1) . '|' . pg_fetch_result($result, $i, 2) . '|' .  
-				pg_fetch_result($result, $i, 3) . '|' .  pg_fetch_result($result, $i, 4) . '|' . pg_fetch_result($result, $i, 5) . '|' . pg_fetch_result($result, $i, 6) . '|' . pg_fetch_result($result, $i, 7) . "##";
+		$res .= pg_fetch_result($result, $i, 0) . '|' . pg_fetch_result($result, $i, 1) . '|' . pg_fetch_result($result, $i, 2) . '|' .  pg_fetch_result($result, $i, 3) . '|' .  
+				pg_fetch_result($result, $i, 4) . '|' . pg_fetch_result($result, $i, 5) . '|' . pg_fetch_result($result, $i, 6) . '|' . pg_fetch_result($result, $i, 7) . '|' . pg_fetch_result($result, $i, 8) . "##";
 	}
 	
 }else if($mode == "cluster")

@@ -1,7 +1,8 @@
 <?php
-/* Copyright (C) 2016  Lehrstuhl für Technische Elektronik, Friedrich-Alexander-Universität Erlangen-Nürnberg */
+/* Copyright (C) 2017  Lehrstuhl für Technische Elektronik, Friedrich-Alexander-Universität Erlangen-Nürnberg */
 /* https://github.com/lte-fau/MLS-Map/blob/master/LICENSE */
 	include "secure.php";
+	include "../getSettings.php";
 ?>
 
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
@@ -18,7 +19,6 @@
 	<script src="../js/jquery.min.js"></script>
 	<script src="../jquery-ui/jquery-ui.min.js"></script>
 	<script src="adminscript.js"></script>
-	
 </head>
 <body>
 
@@ -34,8 +34,6 @@
 					<h1> OpenCellID: </h1>
 					<p id="ocidDbVersion" class="infoText">Database Date: </p>
 					<p>
-					<p> Measurement DB seperate?
-					<p>
 					<button type="Button" id="rebuildOcidButton" class="buildBtn">Rebuild OCID</button>
 				</div>
 				
@@ -50,20 +48,40 @@
 				</div>
 			</div>
 			<div id="ssTab">
-				<p>Params:</p>
-				<p>
-				<p>zoomlevel at witch cells are clustered</p>
-				<p>Clustered cells gridsize</p>
-				<p>
-				<p>Zoomlevel at witch to lacSort</p>
-				<p>Zoomlevel at witch lacSort is clustered </p>
-				<p>Clustered lACs gridsize</p>
-				<p>
-				<p>Heatmap resolution</p>
-				<p>Heatmap LAC level</p>
-				<p>
-				<p>Screen extension Factor </p>
-				<p>MNC disable level</p>
+				<div id="leftDiv">
+					<label for="ForceClusteredCellsLevel">Zoomlevel at witch cells are clustered:</label><br>
+					<input type="text" class="settingsTextBox" id="ForceClusteredCellsLevel" title="" value=<?php echo  $paraForceClusteredCellsLevel ?>><br><br>
+					<label for="ForceLacSortLevel">Zoomlevel at witch to lacSort:</label><br>
+					<input type="text" class="settingsTextBox" id="ForceLacSortLevel" title="" value=<?php echo  $paraForceLacSortLevel ?>><br><br>
+					<label for="ForceClusteredLacSortLevel">Zoomlevel at witch lacSort is clustered:</label><br>
+					<input type="text" class="settingsTextBox" id="ForceClusteredLacSortLevel" title="" value=<?php echo  $paraForceClusteredLacSortLevel ?>><br><br>
+					<br>
+					<label for="HeatMaxCellLevel">Heatmap Cluster level:</label><br>
+					<input type="text" class="settingsTextBox" id="HeatMaxCellLevel" title="" value=<?php echo  $paraHeatMaxCellLevel ?>><br><br>
+					<label for="HeatUseLacLevel">Heatmap LAC level:</label><br>
+					<input type="text" class="settingsTextBox" id="HeatUseLacLevel" title="" value=<?php echo  $paraHeatUseLacLevel ?>><br><br>
+					<br>
+					<label for="MaxAvgDistanceRatio">Max Avg. Distange Ratio (Invalid cell detection):</label><br>
+					<input type="text" class="settingsTextBox" id="MaxAvgDistanceRatio" title="" value=<?php echo  $paraMaxAvgDistanceRatio ?>><br><br>
+				</div>
+				
+				<div id="rightDiv">
+					<label for="CellClusterGridSize">Clustered cells gridsize:</label><br>
+					<input type="text" class="settingsTextBox" id="CellClusterGridSize" title="" value=<?php echo  $paraCellClusterGridSize ?>><br><br>
+					<label for="LacClusterGridSize">Clustered LACs gridsize:</label><br>
+					<input type="text" class="settingsTextBox" id="LacClusterGridSize" title="" value=<?php echo  $paraLacClusterGridSize ?>><br><br>
+					
+					<label for="HeatGridSize">Heatmap resolution:</label><br>
+					<input type="text" class="settingsTextBox" id="HeatGridSize" title="" value=<?php echo  $paraHeatGridSize ?>><br><br>
+					<br>
+					<label for="ViewExtendFactor">Screen extension Factor:</label><br>
+					<input type="text" class="settingsTextBox" id="ViewExtendFactor" title="" value=<?php echo  $paraViewExtendFactor ?>><br><br>
+					<label for="MncDisableLevel">MNC disable level:</label><br>
+					<input type="text" class="settingsTextBox" id="MncDisableLevel" title="" value=<?php echo  $paraMncDisableLevel ?>><br><br>
+					<p>
+					<button type="Button" id="resetSettingsButton" class="buildBtn">Reset</button>
+					<button type="Button" id="saveSettingsButton" class="buildBtn">Save</button>
+				</div>
 			</div>
 			<div id="cTab">
 				<div id="consoleDiv">

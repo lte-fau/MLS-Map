@@ -1,4 +1,4 @@
-/* Copyright (C) 2016  Lehrstuhl für Technische Elektronik, Friedrich-Alexander-Universität Erlangen-Nürnberg */
+/* Copyright (C) 2017  Lehrstuhl für Technische Elektronik, Friedrich-Alexander-Universität Erlangen-Nürnberg */
 /* https://github.com/lte-fau/MLS-Map/blob/master/LICENSE */
 
 var isActive = true;
@@ -14,8 +14,9 @@ window.onblur = function () {
 
 function startDbBuilder(mode)
 {
+	$("#tabs").tabs("option", "active", 2);
+	
 	$.post('startDbBuilder.php', {mode: mode, url: $("#linkBox").val()}, function(data){
-		$("#tabs").tabs("option", "active", 2);
 	});
 }
 
@@ -23,7 +24,7 @@ function refreshConsole()
 {
 	if(isActive)
 	{
-		$.post('getConsole.php', {lines: 200}, function(data){
+		$.post('getConsole.php', {lines: 500}, function(data){
 			$('#consoleDiv').empty();
 			if(data == "NO_DATA")
 				$("<p>Logfile is empty.</p>").appendTo("#consoleDiv");
@@ -42,6 +43,24 @@ function refreshConsole()
 	window.setTimeout(refreshConsole, 5000);
 }
 
+function saveSettings()
+{	
+	$.post('saveSettings.php', {ViewExtendFactor: $("#ViewExtendFactor").val(),
+								MncDisableLevel: $("#MncDisableLevel").val(),
+								ForceLacSortLevel: $("#ForceLacSortLevel").val(),
+								ForceClusteredLacSortLevel: $("#ForceClusteredLacSortLevel").val(),
+								ForceClusteredCellsLevel: $("#ForceClusteredCellsLevel").val(),
+								CellClusterGridSize: $("#CellClusterGridSize").val(),
+								LacClusterGridSize: $("#LacClusterGridSize").val(),
+								HeatGridSize: $("#HeatGridSize").val(),
+								HeatMaxCellLevel: $("#HeatMaxCellLevel").val(),
+								HeatUseLacLevel: $("#HeatUseLacLevel").val(),
+								MaxAvgDistanceRatio: $("#MaxAvgDistanceRatio").val()}, function(data){
+		if(data == "SAVED")
+			alert("Settings Saved.");
+	});
+}
+
 $(document).ready(function()
 {
 	$("#consoleDiv").on({
@@ -56,8 +75,11 @@ $(document).ready(function()
 	
 	$("#rebuildOcidButton").button();
 	$("#rebuildMlsButton").button();
+	$("#saveSettingsButton").button();
+	$("#resetSettingsButton").button();
 	
 	$("#linkBox").addClass("ui-widget ui-widget-content ui-corner-all");
+	$(".settingsTextBox").addClass("ui-widget ui-widget-content ui-corner-all");
 
 	$.post('../getInfo.php', {para: 'MLS_DB_DATE'}, function(data){
 		$("#mlsDbVersion").append(data);
@@ -67,6 +89,16 @@ $(document).ready(function()
 		$("#ocidDbVersion").append(data);
 	});
 	
+	$("#saveSettingsButton").click(function(){
+		saveSettings();
+	});
+	
+	$("#resetSettingsButton").click(function(){
+		$.post('saveSettings.php', {}, function(data){
+			if(data == "SAVED")
+				location.reload();
+		});
+	});
 	
 	$("#rebuildOcidButton").click(function(){
 		startDbBuilder("ocid");

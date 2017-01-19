@@ -1,58 +1,11 @@
 <?php
-/* Copyright (C) 2016  Lehrstuhl für Technische Elektronik, Friedrich-Alexander-Universität Erlangen-Nürnberg */
+/* Copyright (C) 2017  Lehrstuhl für Technische Elektronik, Friedrich-Alexander-Universität Erlangen-Nürnberg */
 /* https://github.com/lte-fau/MLS-Map/blob/master/LICENSE */
 include "local.php";
 include "db-settings.php";
+include "../getSettings.php";
+include "config.php";
 include "logHelper.php";
-
-if($argv[1] == "ocid")
-{
-	//__________Params___________
-	$fileName = "tmp/OCIDTowers.csv.gz";
-
-	$tempImportName = "bulkcells";
-	$tempTableName = "tempCells";
-	$tempLacTableName = "tempLACs";
-
-	$tempGixName = "temp_gix";
-	$tempLacGixName = "temp_lac_gix";
-
-	$finalTableName = "ocid";
-	$finalLacTableName = "ocidLACs";
-	$generalTableName = "gInfo";
-
-	$finalGixName = "ocid_gix";
-	$finalLacGixName = "ocid_lac_gix";
-
-	$infoParam = "OCID_BUILD_DATE";
-	
-	$dataURL = "http://opencellid.org/downloads/?apiKey=" . $ocidAPIKey . "&filename=cell_towers.csv.gz";
-	//___________________________
-} else if($argv[1] == "mls")
-{
-	//__________Params___________
-	$fileName = "tmp/MLSTowers.csv.gz";
-
-	$tempImportName = "bulkcells";
-	$tempTableName = "tempCells";
-	$tempLacTableName = "tempLACs";
-
-	$tempGixName = "temp_gix";
-	$tempLacGixName = "temp_lac_gix";
-
-	$finalTableName = "mls";
-	$finalLacTableName = "mlsLACs";
-	$generalTableName = "gInfo";
-
-	$finalGixName = "mls_gix";
-	$finalLacGixName = "mls_lac_gix";
-
-	$infoParam = "MLS_BUILD_DATE";
-	
-	$dataURL = $argv[2];
-	//___________________________
-}else
-	exit;
 
 $mtime = microtime();
 $mtime = explode(" ",$mtime);
@@ -65,6 +18,50 @@ writeLog("******* Starting dbBuilder for $argv[1] *******");
 writeLog("*******************************************");
 writeLog("");
 
+
+	//__________Params___________
+if($argv[1] == "ocid")
+{
+
+	$fileName = "tmp/OCIDTowers.csv.gz";
+
+	$finalTableName = $ocidCellTableName;
+	$finalLacTableName = $ocidLacTableName;
+
+	$finalGixName = "ocid_gix";
+	$finalLacGixName = "ocid_lac_gix";
+
+	$infoParam = "OCID_BUILD_DATE";
+	
+	$dataURL = "http://opencellid.org/downloads/?apiKey=" . $ocidAPIKey . "&filename=cell_towers.csv.gz";
+} else if($argv[1] == "mls")
+{
+	$fileName = "tmp/MLSTowers.csv.gz";
+
+	$finalTableName = $mlsCellTableName;
+	$finalLacTableName = $mlsLacTableName;
+	$finalGixName = "mls_gix";
+	$finalLacGixName = "mls_lac_gix";
+
+	$infoParam = "MLS_BUILD_DATE";
+	
+	$dataURL = $argv[2];
+
+} else
+{
+	writeLog("Invalid Args.");
+	exit;
+}
+	
+$tempImportName = "bulkcells";
+$tempTableName = "tempCells";
+$tempLacTableName = "tempLACs";
+
+$tempGixName = "temp_gix";
+$tempLacGixName = "temp_lac_gix";
+	//___________________________
+
+	
 if($dataURL != '')
 {
 	if(substr($dataURL, 0, 49) !== "https://d17pt8qph6ncyq.cloudfront.net/export/MLS-" && $argv[1] != "ocid")
@@ -73,8 +70,15 @@ if($dataURL != '')
 		exit;
 	}
 	writeLog("Downloading datafile..");
-	file_put_contents($fileName, fopen("$dataURL", 'r'));
-}else
+	$res = file_put_contents($fileName, fopen("$dataURL", 'r'));
+	if($res === false)
+	{
+		writeLog("Download failed.");
+		exit;
+	}
+	else
+		writeLog(($res / 1000) . " KB loaded.");
+} else
 	writeLog("No URL given. Using local file instead.");
 
 writeLog("Extracting file..");
@@ -206,6 +210,8 @@ if (!$result) {
 	exit;
 }
 
+include "countryDbBuilder.php";
+
 writeLog("Checking for cells outside of their country..");	
 $sql = "UPDATE $tempTableName t1 SET problem = 1 WHERE NOT (pos && (SELECT outline FROM mcc t2 WHERE t2.mcc = t1.mcc))";
 $result = pg_query($conn, $sql);	
@@ -312,7 +318,7 @@ if (!$result) {
 
 writeLog("Checking LAC cells for outliers..");
 $sql = "UPDATE $tempTableName t1 SET problem = 2 WHERE ST_Distance(pos, (SELECT cPos FROM $tempLacTableName t2 WHERE t2.area = t1.area AND t2.mcc = t1.mcc AND t2.net = t1.net AND t2.radio = t1.radio))
-														> (5 * (SELECT tempDist FROM $tempLacTableName t2 WHERE t2.area = t1.area AND t2.mcc = t1.mcc AND t2.net = t1.net AND t2.radio = t1.radio))";
+														> ($paraMaxAvgDistanceRatio * (SELECT tempDist FROM $tempLacTableName t2 WHERE t2.area = t1.area AND t2.mcc = t1.mcc AND t2.net = t1.net AND t2.radio = t1.radio))";
 $result = pg_query($conn, $sql);	
 if (!$result) {
 	writeLog("Error checking cells.");
@@ -372,7 +378,7 @@ if (!$result) {
 
 $problematicCells = $rowsOutsideMcc + $rowsFarFromArea;
 writeLog("Populating info table..");
-$sql = "INSERT INTO $generalTableName VALUES ('$infoParam', CURRENT_TIMESTAMP, '$srcFileName', $problematicCells, null)
+$sql = "INSERT INTO $generalInfoTableName VALUES ('$infoParam', CURRENT_TIMESTAMP, '$srcFileName', $problematicCells, null)
 	 ON CONFLICT (para) DO UPDATE SET time = CURRENT_TIMESTAMP, sInfo = '$srcFileName', iInfo = $problematicCells, eInfo = null";
 $result = pg_query($conn, $sql);	
 if (!$result) {
@@ -403,4 +409,7 @@ $mtime = $mtime[1] + $mtime[0];
 $endtime = $mtime; 
 $totaltime = ($endtime - $starttime); 
 writeLog("Done. Took $totaltime seconds.");
+
+if($argv[1] == "ocid")
+	include "sMeasDbBuilder.php";
 ?>

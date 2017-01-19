@@ -1,5 +1,5 @@
 <?php
-/* Copyright (C) 2016  Lehrstuhl für Technische Elektronik, Friedrich-Alexander-Universität Erlangen-Nürnberg */
+/* Copyright (C) 2017  Lehrstuhl für Technische Elektronik, Friedrich-Alexander-Universität Erlangen-Nürnberg */
 /* https://github.com/lte-fau/MLS-Map/blob/master/LICENSE */
 
 $numLines = $_POST["lines"];
@@ -7,12 +7,6 @@ $res = "";
 
 $file = file("tmp/log.txt");
 $fileLength = count($file);
-
-if($fileLength > 2500)
-{
-	include "logHelper.php";
-	truncateLog(1500);
-}
 
 if($fileLength > 0)
 {

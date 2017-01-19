@@ -1,9 +1,9 @@
 <?php
 /* Copyright (C) 2016  Lehrstuhl für Technische Elektronik, Friedrich-Alexander-Universität Erlangen-Nürnberg */
 /* https://github.com/lte-fau/MLS-Map/blob/master/LICENSE */
-include "local.php";
-include "db-settings.php";
-include "logHelper.php";
+include_once "local.php";
+
+// This file does not create its own database connection since its included in dbBuilder
 
 //__________Params___________
 $mccs = array(
@@ -32,27 +32,15 @@ $mccs = array(
 				array("switzerland", 228)
 			);
 
-$countryTableName = "mcc";
-$generalTableName = "gInfo";
-
-$infoParam = "MCC_UPDATE_DATE";
+$countryInfoParam = "MCC_UPDATE_DATE";
 //___________________________
 
-$mtime = microtime();
-$mtime = explode(" ",$mtime);
-$mtime = $mtime[1] + $mtime[0];
-$starttime = $mtime;
+$cMtime = microtime();
+$cMtime = explode(" ",$cMtime);
+$cMtime = $cMtime[1] + $cMtime[0];
+$cStarttime = $cMtime;
 
-writeLog("");
-writeLog("*******************************************");
 writeLog("* Starting dbBuilder for Country Outlines *");
-writeLog("*******************************************");
-writeLog("");
-
-// Create connection
-$conn = pg_connect($connString . " sslmode=disable")
-	or die('Could not connect: ' . pg_last_error());
-writeLog("Connected to database successfully.");
 
 writeLog("Creating table..");
 $sql = "CREATE TABLE IF NOT EXISTS $countryTableName(
@@ -91,7 +79,7 @@ foreach ($mccs as $cMcc)
 }
 
 writeLog("Populating info table..");
-$sql = "INSERT INTO $generalTableName VALUES ('$infoParam', CURRENT_TIMESTAMP, null, null, null)
+$sql = "INSERT INTO $generalInfoTableName VALUES ('$countryInfoParam', CURRENT_TIMESTAMP, null, null, null)
 		ON CONFLICT (para) DO UPDATE SET time = CURRENT_TIMESTAMP, sInfo = null, iInfo = null, eInfo = null";
 $result = pg_query($conn, $sql);
 if (!$result) {
@@ -99,12 +87,10 @@ if (!$result) {
 	exit;
 }
 
-pg_close($conn);
-
-$mtime = microtime(); 
-$mtime = explode(" ",$mtime);
-$mtime = $mtime[1] + $mtime[0];
-$endtime = $mtime;
-$totaltime = ($endtime - $starttime);
+$cMtime = microtime(); 
+$cMtime = explode(" ",$cMtime);
+$cMtime = $cMtime[1] + $cMtime[0];
+$endtime = $cMtime;
+$totaltime = ($endtime - $cStarttime);
 writeLog("Done. Took $totaltime seconds.");
 ?>

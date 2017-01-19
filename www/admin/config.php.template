@@ -1,0 +1,32 @@
+<?php
+	/* Copyright (C) 2017  Lehrstuhl für Technische Elektronik, Friedrich-Alexander-Universität Erlangen-Nürnberg */
+	/* https://github.com/lte-fau/MLS-Map/blob/master/LICENSE */
+	
+	// Database credentials are set in db-settings.php!
+	
+	// Username and Password for the Admin-Interface
+	$defaultAdminUsername = "USERNAME";
+	$defaultAdminPassword = "PASSWORD";
+
+	// OpenCellID API-Key. Needed to download data directly from the ocid website
+	$ocidAPIKey = "XXXXXXXXXXX";
+
+	// Defalt serverside settings for dataviewing
+	$paraViewExtendFactor = 0.1;
+	$paraMncDisableLevel = 8;
+
+	$paraForceLacSortLevel = 8;
+	$paraForceClusteredLacSortLevel = 8;
+	$paraForceClusteredCellsLevel = 12;
+
+	$paraCellClusterGridSize = 12;
+	$paraLacClusterGridSize = 15;
+
+	$paraHeatGridSize = 40;
+	$paraHeatMaxCellLevel = 9;
+	$paraHeatUseLacLevel = 7;
+	
+	// Default settings for database building
+	// Used to find bad cells. If the distance from cell to Location Area center is highter then this times the average distance from all cells, the cell is marked as untrustworthy
+	$paraMaxAvgDistanceRatio = 3;
+?>

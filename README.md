@@ -5,7 +5,7 @@ A map visualization of the Mozilla Location Service and OpenCellID databases.
 ## Usage
 
 This project requires a PostGIS enabled PostgreSQL Database.
-Login information is stored in the _db-settings.php_ as well as the default admin-interface credentials and the OpenCellID API Key.
+Login information and table names are stored in _db-settings.php_. All other configuration is stored in _config.php_. The contents of config.php are copied to a database, therefore changes won't be applied after first generation.
 
 ##### 1.: Two functions are needed to enable the dbBuilder to work:
 
@@ -13,8 +13,8 @@ The first works around _ST_Concavehull_ sometimes failing. It allows _null_ to b
 
 ```sql
 CREATE OR REPLACE FUNCTION public.st_nullableconcavehull(param_geom geometry, param_pctconvex double precision, param_allow_holes boolean DEFAULT false)
-	RETURNS geometry AS
-$BODY$
+	RETURNS geometry
+	AS $BODY$
 	DECLARE
 	BEGIN       
 		RETURN public.st_concavehull(param_geom,param_pctconvex,param_allow_holes);

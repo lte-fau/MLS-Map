@@ -1,14 +1,14 @@
 <?php
-/* Copyright (C) 2016  Lehrstuhl für Technische Elektronik, Friedrich-Alexander-Universität Erlangen-Nürnberg */
+/* Copyright (C) 2017  Lehrstuhl für Technische Elektronik, Friedrich-Alexander-Universität Erlangen-Nürnberg */
 /* https://github.com/lte-fau/MLS-Map/blob/master/LICENSE */
-include "local.php";
-include "db-settings.php";
-include "logHelper.php";
+include_once "local.php";
+include_once "db-settings.php";
+include_once "logHelper.php";
 
 //__________Params___________
-$mode = 1;								// Mode0 -> Merge last_measurements, Mode1 -> Create Database from local files, Mode2 -> Both
+$mode = 2;								// Mode0 -> Merge last_measurements, Mode1 -> Create Database from local files, Mode2 -> Both
 $startingFileIndex = 1;					// First local filenumber witch to import
-$endingFileIndex = 40;					// Last local filenumber witch to import
+$endingFileIndex = 99;					// Last local filenumber witch to import
 $dropExistingData = 1;					// Only dropped if importing local files
 $localFileName = "tmp/measurements_";	// A number and .csv.gz will be added later
 
@@ -19,12 +19,10 @@ $LowerLonLimit = 10.3;
 $UpperLatLimit = 50.2;
 $LowerLatLimit = 48.6;
 
-// Importing last_measurements multiple times results in the same measurements showing up multiple times. Last measurement flag? Or use only numbered files (-> One month old data)
-
 $tempTableName = "tempmeas";
-$generalTableName = "gInfo";
 
 $infoParam = "MEAS_UPDATE_DATE";
+$eInfo = 0;
 
 $dataURL = "http://opencellid.org/downloads/?apiKey=" . $ocidAPIKey . "&filename=last_measurements.csv.gz";
 //___________________________
@@ -56,7 +54,7 @@ if($mode == 1 || $mode == 2)
 	if($dropExistingData == 1)
 	{
 		writeLog("Droping old Data..");
-		$sql = "ALTER TABLE ocid DROP COLUMN IF EXISTS meas";
+		$sql = "ALTER TABLE $ocidCellTableName DROP COLUMN IF EXISTS meas";
 		$result = pg_query($conn, $sql);	
 		if (!$result) {
 			writeLog("Couldn't drop old Data.");
@@ -67,7 +65,7 @@ if($mode == 1 || $mode == 2)
 
 writeLog("Checking cell Table measure column..");  
 
-$sql = "SELECT column_name FROM information_schema.columns WHERE table_name='ocid' and column_name='meas'";
+$sql = "SELECT column_name FROM information_schema.columns WHERE table_name='$ocidCellTableName' and column_name='meas'";
 $result = pg_query($conn, $sql);	
 if (!$result) {
 	writeLog("Coudn't check column.");
@@ -77,7 +75,7 @@ if (!$result) {
 if(pg_num_rows($result) == 0)
 {
 	// Column doesn't exist
-	$sql = "ALTER TABLE ocid ADD COLUMN meas geometry(MULTIPOINTZ, 4326)";
+	$sql = "ALTER TABLE $ocidCellTableName ADD COLUMN meas geometry(MULTIPOINTZ, 4326)";
 	$result = pg_query($conn, $sql);
 	if (!$result) {
 		exit;
@@ -95,7 +93,15 @@ for($fileIndex; $fileIndex <= $endingFileIndex; $fileIndex++)
 		$fileName = "tmp/" . "last_measurements.csv.gz";
 		writeLog("*** Importing remote file $fileName..");
 		writeLog("Downloading datafile..");
-		file_put_contents($fileName, fopen("$dataURL", 'r'));
+		$res = file_put_contents($fileName, fopen("$dataURL", 'r'));
+		if($res === false)
+		{
+			writeLog("Download failed.");
+			eInfo = 1;
+			break;
+		}
+		else
+			writeLog(($res / 1000) . " KB loaded.");
 	}else 
 	{
 		$fileName = $localFileName . $fileIndex . ".csv.gz";
@@ -113,93 +119,94 @@ for($fileIndex; $fileIndex <= $endingFileIndex; $fileIndex++)
 
 	if($file == false || $outputFile == false)
 	{
-		writeLog("Failed to open file.");
-		exit;
-	}
-
-	while (!gzeof($file)) {
-		fwrite($outputFile, gzread($file, $buffer_size));
-	}
-
-	fclose($outputFile);
-	gzclose($file);
-	
-	writeLog("Creating temp table..");
-	pg_query($conn, "DROP TABLE IF EXISTS $tempTableName");
-
-	// COPY is fastest wenn done in the same transaction as CREATE TABLE
-	pg_query($conn, "BEGIN");
-	$sql = "CREATE TABLE $tempTableName(
-				mcc smallint, 
-				net smallint,
-				area integer,
-				cell integer,
-				lon double precision,
-				lat double precision,
-				signal smallint,
-				measured bigint,
-				created bigint,
-				rating real,
-				speed real,
-				direction real,
-				radio text,
-				ta integer,
-				rnc integer,
-				cid integer,
-				psc integer,
-				tac integer,
-				pci integer,
-				sid integer,
-				nid integer,
-				bid integer)";
-	$result = pg_query($conn, $sql);
-	if (!$result) {
-		writeLog("An error occurred during Table creation.");
-		exit;
-	}
-
-	writeLog("Importing Data..");
-	$sql = "SELECT import_csv_file_to_table('$tempTableName', '$srcFileName')";
-	$result = pg_query($conn, $sql);
-	if (!$result) {
-		writeLog("An error occurred during Bulk import.");
-		exit;
-	}
-	pg_query($conn, "COMMIT");
-	
-	// Delete unpacked file
-	unlink("tmp/" . $srcFileName);
-	
-	if($filterMode != 0)
+		writeLog("Failed to open file. Error or no more to read.");
+		$fileIndex = $endingFileIndex - 1;
+	} else
 	{
-		writeLog("Deleting unwated entries.."); 
-		if($filterMode == 1)
-			$sql = "DELETE FROM $tempTableName WHERE lon < $LowerLonLimit OR lon > $UpperLonLimit OR lat < $LowerLatLimit OR lat > $UpperLatLimit";
-		else
-			$sql = "DELETE FROM $tempTableName WHERE mcc <> $filterMcc";
-		$result = pg_query($conn, $sql);	
+		while (!gzeof($file)) {
+			fwrite($outputFile, gzread($file, $buffer_size));
+		}
+
+		fclose($outputFile);
+		gzclose($file);
+		
+		writeLog("Creating temp table..");
+		pg_query($conn, "DROP TABLE IF EXISTS $tempTableName");
+
+		// COPY is fastest wenn done in the same transaction as CREATE TABLE
+		pg_query($conn, "BEGIN");
+		$sql = "CREATE TABLE $tempTableName(
+					mcc smallint, 
+					net smallint,
+					area integer,
+					cell integer,
+					lon double precision,
+					lat double precision,
+					signal smallint,
+					measured bigint,
+					created bigint,
+					rating real,
+					speed real,
+					direction real,
+					radio text,
+					ta integer,
+					rnc integer,
+					cid integer,
+					psc integer,
+					tac integer,
+					pci integer,
+					sid integer,
+					nid integer,
+					bid integer)";
+		$result = pg_query($conn, $sql);
 		if (!$result) {
-			writeLog("Coudn't delete entries.");
+			writeLog("An error occurred during Table creation.");
 			exit;
 		}
-	}
-	
-	writeLog("Merging data into cellTable..");		
-	$sql = "UPDATE ocid t1 SET meas = ST_Multi(ST_CollectionHomogenize(ST_Collect(meas, atm.cMeas)))
-				FROM (SELECT ST_Collect(ST_SetSRID(ST_MakePoint(lon, lat, signal), 4326)) AS cMeas, mcc, net, area, cell, radio FROM $tempTableName GROUP BY mcc, net, area, cell, radio) atm
-				WHERE t1.mcc = atm.mcc AND t1.net = atm.net AND t1.area = atm.area AND t1.cell = atm.cell AND t1.radio = atm.radio";
-	$result = pg_query($conn, $sql);
-	if (!$result) {
-		writeLog("Couldn't merge Data.");
-		exit;
-	}
 
-	pg_query($conn, "DROP TABLE IF EXISTS $tempTableName");
+		writeLog("Importing Data..");
+		$sql = "SELECT import_csv_file_to_table('$tempTableName', '$srcFileName')";
+		$result = pg_query($conn, $sql);
+		if (!$result) {
+			writeLog("An error occurred during Bulk import.");
+			exit;
+		}
+		pg_query($conn, "COMMIT");
+		
+		// Delete unpacked file
+		unlink("tmp/" . $srcFileName);
+		
+		if($filterMode != 0)
+		{
+			writeLog("Deleting unwated entries.."); 
+			if($filterMode == 1)
+				$sql = "DELETE FROM $tempTableName WHERE lon < $LowerLonLimit OR lon > $UpperLonLimit OR lat < $LowerLatLimit OR lat > $UpperLatLimit";
+			else
+				$sql = "DELETE FROM $tempTableName WHERE mcc <> $filterMcc";
+			$result = pg_query($conn, $sql);	
+			if (!$result) {
+				writeLog("Coudn't delete entries.");
+				exit;
+			}
+		}
+		
+		writeLog("Merging data into cellTable..");		
+		$sql = "UPDATE $ocidCellTableName t1 SET meas = ST_Multi(ST_CollectionHomogenize(ST_Collect(meas, atm.cMeas)))
+					FROM (SELECT ST_Collect(ST_SetSRID(ST_MakePoint(lon, lat, signal), 4326)) AS cMeas, mcc, net, area, cell, radio FROM $tempTableName GROUP BY mcc, net, area, cell, radio) atm
+					WHERE t1.mcc = atm.mcc AND t1.net = atm.net AND t1.area = atm.area AND t1.cell = atm.cell AND t1.radio = atm.radio";
+		$result = pg_query($conn, $sql);
+		if (!$result) {
+			writeLog("Couldn't merge Data.");
+			exit;
+		}
+
+		pg_query($conn, "DROP TABLE IF EXISTS $tempTableName");
+	}
 }
 
 writeLog("Populating info table..");
-$sql = "INSERT INTO $generalTableName VALUES ('$infoParam', CURRENT_TIMESTAMP, '$srcFileName', null, null)
-		ON CONFLICT (para) DO UPDATE SET time = CURRENT_TIMESTAMP, sInfo = '$startingFileIndex - $endingFileIndex', iInfo = $mode, eInfo = null";
+$sql = "INSERT INTO $generalInfoTableName VALUES ('$infoParam', CURRENT_TIMESTAMP, '$startingFileIndex - $endingFileIndex - $srcFileName', $filterMode, null)
+		ON CONFLICT (para) DO UPDATE SET time = CURRENT_TIMESTAMP, sInfo = '$startingFileIndex - $endingFileIndex - $srcFileName', iInfo = $filterMode, eInfo = null";
 $result = pg_query($conn, $sql);	
 if (!$result) {
 	writeLog("Couldn't create Builddate Entry.");

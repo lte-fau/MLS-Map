@@ -1,6 +1,6 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <?php
-/* Copyright (C) 2016  Lehrstuhl für Technische Elektronik, Friedrich-Alexander-Universität Erlangen-Nürnberg */
+/* Copyright (C) 2017  Lehrstuhl für Technische Elektronik, Friedrich-Alexander-Universität Erlangen-Nürnberg */
 /* https://github.com/lte-fau/MLS-Map/blob/master/LICENSE */
 
 session_start();
@@ -8,71 +8,86 @@ session_start();
 if(isset($_GET['login']))
 {	
 	include "db-settings.php";
+	include "config.php";
+	include "logHelper.php";
+	
 	$conn = pg_connect($connString)
-	or die('Could not connect: ' . pg_last_error());
+		or die('Could not connect: ' . pg_last_error());
 	
 	$username = $_POST['username'];
 	$password = $_POST['password'];
 	
-	$sql = "SELECT * FROM admins WHERE username = '$username'";
+	$sql = "SELECT * FROM $adminsTableName WHERE username = '$username'";
 	$result = pg_query($conn, $sql);
-
-	if (!$result) {
-		// SELECT failed -> Table doesn't exist. Do first time setup..
-		include "logHelper.php";
-		writeLog("No admin table found. Performing first time setup.");
-		
-		$result = pg_query($conn, "CREATE TABLE admins(username text NOT NULL, password text NOT NULL, PRIMARY KEY (username))");
+	if(pg_num_rows($result) == 0)
+	{
+		// No result. Check if db exists
+		if(pg_num_rows(pg_query($conn, "SELECT 1 FROM $adminsTableName LIMIT 1")) == 0)
+		{
+			// No Result -> Table doesn't exist or Db error.
+			writeLog("Failed to access admin table.");
+			writeLog(pg_last_error($conn));
 			
-		if (!$result) {
-			echo "An error occurred during Table creation.\n";
-			exit;
+			// ******** First Time Setup block ********
+			writeLog("Attempting Performing first time setup.");
+			
+			$result = pg_query($conn, "CREATE TABLE $adminsTableName(username text NOT NULL, password text NOT NULL, PRIMARY KEY (username))");
+			if (!$result) {
+				writeLog("An error occurred during admin Table creation.");
+				exit;
+			}
+			
+			$defaultPassword =  password_hash($defaultAdminPassword, PASSWORD_DEFAULT);
+			
+			$result = pg_query($conn, "INSERT INTO $adminsTableName(username, password) VALUES ('$defaultAdminUsername', '$defaultPassword')");
+			if (!$result) {
+				writeLog("An error occurred during User creation.");
+				exit;
+			}
+			
+			$sql = "CREATE TABLE IF NOT EXISTS $generalInfoTableName(
+						para text NOT NULL,
+						time timestamp,
+						sInfo text,
+						iInfo integer,
+						eInfo integer,
+						PRIMARY KEY (para))";
+			$result = pg_query($conn, $sql);
+			if (!$result) {
+				writeLog("An error occurred during general Table creation.");
+				exit;
+			}
+			
+			$sql = "CREATE TABLE IF NOT EXISTS $settingsTableName(
+						para text NOT NULL,
+						value real,
+						PRIMARY KEY (para))";
+			$result = pg_query($conn, $sql);
+			if (!$result) {
+				writeLog("An error occurred during settings Table creation.");
+				exit;
+			}
+			
+			include "saveSettings.php";
+			
+			$errorString = "First time setup performed. Please retry.";
+			// ****************************************
+		} else
+		{
+			$errorString = "Unknown User or Database error.";
+			writeLog("Login Attempted: " . $errorString);
 		}
-		
-		$defaultPassword =  password_hash($defaultAdminPassword, PASSWORD_DEFAULT);
-		
-		$result = pg_query($conn, "INSERT INTO admins(
-			username, password) VALUES ('$defaultAdminUsername', '$defaultPassword')");
-	
-		if (!$result) {
-			echo "An error occurred during User creation.\n";
-			exit;
-		}
-	
-		$sql = "SELECT * FROM admins WHERE username = '$username'";
-		$result = pg_query($conn, $sql); 
-		if (!$result) {
-			echo "An error occurred during Data Read.\n";
-			exit;
-		}
-		
-		$sql = "CREATE TABLE IF NOT EXISTS $generalTableName(
-					para text NOT NULL,
-					time timestamp,
-					sInfo text,
-					iInfo integer,
-					eInfo integer,
-					PRIMARY KEY (para))";
-		$result = pg_query($conn, $sql);
-		if (!$result) {
-			echo "An error occurred during general Table creation.";
-			exit;
-		}
-	}
-	
-	if(pg_num_rows($result) == 1)
+	} else if(pg_num_rows($result) == 1)
 	{
 		if(password_verify($password, pg_fetch_result($result, 0, 1)))
 		{
 			$_SESSION['userid'] = pg_fetch_result($result, 0, 0);
-		}else
+			writeLog("Login Successful: " . pg_fetch_result($result, 0, 0));
+		} else
 		{
 			$errorString = "Wrong password.";
-		}
-			
-	} else
-	{
-		$errorString = "Unknown User.";
+			writeLog("Login Attempted: " . $errorString . " User: " . pg_fetch_result($result, 0, 0));
+		}	
 	}
 }
 
@@ -95,7 +110,6 @@ if(isset($_SESSION['userid']))
 	
 	<script src="../js/jquery.min.js"></script>
 	<script src="../jquery-ui/jquery-ui.min.js"></script>
-	
 </head>
 <body>
 

@@ -1,7 +1,20 @@
 <?php
-	$connString = "host=XXXX dbname=XXXX user=XXXX password=XXXX";
-	$ocidAPIKey = "XXXXXXXXXXX";
+	/* Copyright (C) 2017  Lehrstuhl für Technische Elektronik, Friedrich-Alexander-Universität Erlangen-Nürnberg */
+	/* https://github.com/lte-fau/MLS-Map/blob/master/LICENSE */
 	
-	$defaultAdminUsername = "USERNAME";
-	$defaultAdminPassword = "PASSWORD";
+	// Database credentials
+	$connString = "host=XXXX dbname=XXXX user=XXXX password=XXXX";
+	
+	// Table names
+	$ocidCellTableName = "ocid";
+	$ocidLacTableName = "ocidLACs";
+	
+	$mlsCellTableName = "mls";
+	$mlsLacTableName = "mlsLACs";
+	
+	$countryTableName = "mcc";
+	
+	$generalInfoTableName = "gInfo";
+	$settingsTableName = "settings";
+	$adminsTableName = "admins";
 ?>

@@ -235,10 +235,6 @@ function notify(str)
 
 function setUrlParams(sMode, sMcc, sMnc, sLac, sRadio, sCid)
 {
-	// Params needed: displayMode
-	// If displayMode is any cell view mode: radio, mncs, mapzoom, mapcenter
-	// If displayMode is search Mode: identifying parameters mcc, mnc, lac, radio, cid (if cell)
-	
 	switch(sMode){
 		case "s":
 			if(sCid ===  null)
@@ -253,7 +249,7 @@ function setUrlParams(sMode, sMcc, sMnc, sLac, sRadio, sCid)
 		case "lacSort":
 		case "heat":
 			var mCenter = map.getCenter();
-			var params = {m: sMode, z: map.getZoom(), la: mCenter.lat, lo: mCenter.lng, n: sMnc, r: sRadio};
+			var params = {m: sMode, z: map.getZoom(), la: (mCenter.lat).toFixed(5), lo: (mCenter.lng).toFixed(5), n: sMnc, r: sRadio};
 			break;
 		default:
 	}
@@ -300,9 +296,8 @@ function search()
 		loadLacData($("#sMcc").val(), $("#sMnc").val(), $("#sLac").val(), $("#sRadio").val());
 	else
 	{
-		sMode = "lac";
 		$.post( 'searchCells.php', { type: 'cell', mcc: $("#sMcc").val(), mnc: $("#sMnc").val()
-							   , lac: $("#sLac").val(), cid: $("#sId").val(), radio: $("#sRadio").val(), dataSource: paraDataSource}, function( data )
+							   , lac: $("#sLac").val(), cid: $("#sId").val(), radio: $("#sRadio").val(), dataSource: paraDataSource, ageStamp: 0}, function( data )
 		{
 			if(data == "MULTIPLE")
 			{
@@ -328,8 +323,8 @@ function search()
 			sCellLayer = getCellMarker(parseFloat(lonlatP[1]), parseFloat(lonlatP[0]), $("#sMcc").val(), $("#sMnc").val(), $("#sLac").val(), $("#sId").val(), $("#sRadio").val(), lonlatP[2]);
 			map.addLayer(sCellLayer);
 			
-			map.panTo(new L.LatLng(parseFloat(lonlatP[1]), parseFloat(lonlatP[0])));
-			map.setZoom(15);
+			map.panTo(sCellLayer.getLatLng());
+			map.setZoom(14);
 		});
 	}
 }
@@ -337,7 +332,13 @@ function search()
 function loadLacData(mcc, mnc, area, radio)
 {
 	$("#loadingGif").show();
-	$.post( 'searchCells.php', { type: 'lac', mcc: mcc, mnc: mnc, lac: area, radio: radio, dataSource: paraDataSource}, function( data )
+	
+	
+	var ageVar = 0;
+	if(paraIgnoreOldData)
+		ageVar = Math.floor(Date.now() / 1000) - paraIgnoreDataAge;
+
+	$.post( 'searchCells.php', { type: 'lac', mcc: mcc, mnc: mnc, lac: area, radio: radio, ageStamp: ageVar, dataSource: paraDataSource}, function(data)
 	{
 		var sData = data.split("&&");
 		
@@ -369,8 +370,7 @@ function loadLacData(mcc, mnc, area, radio)
 		for (var i = 0; i < cData.length - 1; i++)
 		{
 			var cellData = cData[i].split("|");
-			
-			var marker = getCellMarker(parseFloat(cellData[2]), parseFloat(cellData[1]), mcc, mnc, area, cellData[0], radio, parseInt(cellData[3]));
+			var marker = getCellMarker(parseFloat(cellData[2]), parseFloat(cellData[1]), mcc, mnc, area, cellData[0], radio, parseInt(cellData[3]), parseInt(cellData[4]));
 			lacMarkerCluster.addLayer(marker);
 		}
 
@@ -427,13 +427,17 @@ function getCellProblemText(problem)
 	}
 }
 
-function getCellMarker(lon, lat, mcc, mnc, area, cid, radio, problem)
+function getCellMarker(lon, lat, mcc, mnc, area, cid, radio, updateDate, problem)
 {
 	var cStatus = getCellProblemText(problem);
-	var marker = new L.Marker([lon, lat], {displayNumber: 1, mcc: mcc, net: mnc, area: area, cid: cid, radio: radio, problemText: cStatus})
-		.bindPopup(cStatus + "<center><b>" +  radio + "</b></center><br>MCC: " + mcc + 
-				"<br>MNC: " + mnc + "<br>LAC: " + area + 
-				"<br>CID: " + cid).setIcon(greenMarkerIcon)
+	
+	var date = new Date(0);
+	date.setUTCSeconds(updateDate);
+	var updateText = date.toLocaleString();
+	
+	var marker = new L.Marker([lon, lat], {displayNumber: 1, mcc: mcc, net: mnc, area: area, cid: cid, radio: radio, updateText: updateText, problemText: cStatus})
+		.bindPopup(cStatus + "<center><b>" +  radio + "</b></center><br>MCC: " + mcc + "<br>MNC: " + mnc + 
+					"<br>LAC: " + area + "<br>CID: " + cid + "<br>Last Update:<br>" + updateText).setIcon(greenMarkerIcon)
 		.on('dblclick', function(e) {
 			loadMeasData(this);
 		});
@@ -461,7 +465,7 @@ function loadMeasData(mkr)
 			$("#informationText").empty();
 			$("#informationText").append("<strong>Cell Information:</strong></br>");
 			$("#informationText").append("<center><b>" +  mkr.options.radio + "</b></center><br>MCC: " + mkr.options.mcc + 
-				"<br>MNC: " + mkr.options.net + "<br>LAC: " + mkr.options.area + "<br>CID: " + mkr.options.cid + "<br> " + mkr.options.problemText);
+				"<br>MNC: " + mkr.options.net + "<br>LAC: " + mkr.options.area + "<br>CID: " + mkr.options.cid + "<br>Last Update:<br>" + mkr.options.updateText + "<br> " + "<br> " + mkr.options.problemText);
 			$("#informationText").show("fast");
 			
 			measLayer = L.featureGroup();
@@ -716,7 +720,7 @@ function loadCellData()
 						for (var i = 0; i < (cData.length - 1); i++)
 						{
 							var clusterData = cData[i].split("|");
-							var marker = getCellMarker(parseFloat(clusterData[6]), parseFloat(clusterData[5]), clusterData[1], clusterData[2], clusterData[3], clusterData[4], clusterData[0], parseInt(clusterData[7]));
+							var marker = getCellMarker(parseFloat(clusterData[6]), parseFloat(clusterData[5]), clusterData[1], clusterData[2], clusterData[3], clusterData[4], clusterData[0], parseInt(clusterData[7]), parseInt(clusterData[8]));
 							mlsMarkerCluster.addLayer(marker);
 						}
 						
@@ -829,6 +833,13 @@ function loadCellData()
 													cvLACPolyHoverLayer.clearLayers();
 													this.closePopup();
 													})
+												.on('click', function (e) {
+													cvLACPolyHoverLayer.clearLayers();
+													if(map.hasLayer(cvLACOutlineLayer))
+														map.removeLayer(cvLACOutlineLayer);
+													cvLACOutlineLayer = this.options.lacPoly;
+													map.addLayer(cvLACOutlineLayer);
+													})
 												.on('dblclick', function(e) {
 													cvLACPolyHoverLayer.clearLayers();
 													if(map.hasLayer(cvLACOutlineLayer))
@@ -940,7 +951,7 @@ function setParams()
 function init() // All static one-time stuff is here
 {
 	// Init Map
-	osmLayer = L.tileLayer('http://{s}.tile.openstreetmap.de/tiles/osmde/{z}/{x}/{y}.png', {
+	osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 		attribution: 'Map data &copy; <a href="https://openstreetmap.org">OpenStreetMap</a> contributors, ' + 
 			' <a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>',
 		maxZoom: 18,
@@ -1079,7 +1090,6 @@ function init() // All static one-time stuff is here
 						text: "Apply",
 						click: function() {				
 							setParams();
-
 							if(autoLoad)
 								loadCellData();
 						}
@@ -1088,7 +1098,7 @@ function init() // All static one-time stuff is here
 						text: "Restore defaults",
 						click: function() {
 							deleteCookie();
-							location.reload();
+							window.location.href = window.location.href.substring(0, window.location.href.indexOf("?"));
 						},
 					}
 				],
@@ -1108,6 +1118,9 @@ function init() // All static one-time stuff is here
 					
 					$("#SETfilterLACs").button();
 					$("#SETlacFilterLimit").addClass("ui-widget ui-widget-content ui-corner-all");
+					
+					$("#SETLACClusterRadius").addClass("ui-widget ui-widget-content ui-corner-all");
+					$("#SETLACMaxLacAmount").addClass("ui-widget ui-widget-content ui-corner-all");
 					
 					$("#SETparaLACClusterRadius").addClass("ui-widget ui-widget-content ui-corner-all");
 					$("#SETLACClusteredClusterRadius").addClass("ui-widget ui-widget-content ui-corner-all");
@@ -1211,7 +1224,7 @@ function init() // All static one-time stuff is here
 						return;
 					}
 					
-					loadMeasData(getCellMarker(parseFloat(lonlatP[1]), parseFloat(lonlatP[0]), $("#sMcc").val(), $("#sMnc").val(), $("#sLac").val(), $("#sId").val(), $("#sRadio").val(), lonlatP[2]));
+					loadMeasData(getCellMarker(parseFloat(lonlatP[1]), parseFloat(lonlatP[0]), $("#sMcc").val(), $("#sMnc").val(), $("#sLac").val(), $("#sId").val(), $("#sRadio").val(), lonlatP[2], lonlatP[3]));
 				});
 				break;
 			case "norm":	// Cell view Modes. Set Map Location, Radio and Network settings and call loadCellData()
@@ -1263,6 +1276,7 @@ function init() // All static one-time stuff is here
 $(document).ready(function()
 {
 	init();
+	
 	map.on('dragend', function(e) {
 		if(autoLoad)
 			loadCellData();

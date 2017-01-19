@@ -1,5 +1,5 @@
 <?php
-/* Copyright (C) 2016  Lehrstuhl für Technische Elektronik, Friedrich-Alexander-Universität Erlangen-Nürnberg */
+/* Copyright (C) 2017  Lehrstuhl für Technische Elektronik, Friedrich-Alexander-Universität Erlangen-Nürnberg */
 /* https://github.com/lte-fau/MLS-Map/blob/master/LICENSE */
 session_start();
 
@@ -26,7 +26,7 @@ $conn = pg_connect($connString)
 	
 $res = "meas&&";
 
-$sql = "SELECT ST_AsText(meas) FROM ocid WHERE radio = '$radio' AND mcc = $mcc AND net = $net AND area = $area AND cell = $cid";
+$sql = "SELECT ST_AsText(meas) FROM $ocidCellTableName WHERE radio = '$radio' AND mcc = $mcc AND net = $net AND area = $area AND cell = $cid";
 $result = pg_query($conn, $sql);
 if (!$result) {
 	echo "An error occurred while reading Data.";

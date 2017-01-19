@@ -1,5 +1,5 @@
 <?php
-/* Copyright (C) 2016  Lehrstuhl für Technische Elektronik, Friedrich-Alexander-Universität Erlangen-Nürnberg */
+/* Copyright (C) 2017  Lehrstuhl für Technische Elektronik, Friedrich-Alexander-Universität Erlangen-Nürnberg */
 /* https://github.com/lte-fau/MLS-Map/blob/master/LICENSE */
 session_start();
 
@@ -13,7 +13,7 @@ $conn = pg_connect($connString)
 // Build a Versionstring
 if($para == "DB_DATE_STRING") {
 	// Get MLS Date
-	$sql = "SELECT time, iInfo FROM gInfo WHERE para = 'MLS_BUILD_DATE'";
+	$sql = "SELECT time::timestamp(0), iInfo FROM $generalInfoTableName WHERE para = 'MLS_BUILD_DATE'";
 	$result = pg_query($conn, $sql);
 
 	if (!$result) {
@@ -30,7 +30,7 @@ if($para == "DB_DATE_STRING") {
 		$res .= "No Data.";
 	
 	// Get OCID Date
-	$sql = "SELECT time, iInfo FROM gInfo WHERE para = 'OCID_BUILD_DATE'";
+	$sql = "SELECT time::timestamp(0), iInfo FROM $generalInfoTableName WHERE para = 'OCID_BUILD_DATE'";
 	$result = pg_query($conn, $sql);
 
 	if (!$result) {
@@ -47,7 +47,7 @@ if($para == "DB_DATE_STRING") {
 		$res .= "No Data.";
 	
 } else if ($para == "MLS_DB_DATE") {
-	$sql = "SELECT time FROM gInfo WHERE para = 'MLS_BUILD_DATE'";
+	$sql = "SELECT time::timestamp(0) FROM $generalInfoTableName WHERE para = 'MLS_BUILD_DATE'";
 	$result = pg_query($conn, $sql);
 
 	if (!$result) {
@@ -62,7 +62,7 @@ if($para == "DB_DATE_STRING") {
 		$res = "No Data.";
 	
 }else if ($para == "OCID_DB_DATE") {
-	$sql = "SELECT time FROM gInfo WHERE para = 'OCID_BUILD_DATE'";
+	$sql = "SELECT time::timestamp(0) FROM $generalInfoTableName WHERE para = 'OCID_BUILD_DATE'";
 	$result = pg_query($conn, $sql);
 
 	if (!$result) {
