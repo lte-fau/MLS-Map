@@ -601,9 +601,8 @@ function loadCellData()
 			if(sMncData[2] == "DISABLED")
 			{
 				mncVar = "ALL";
-				$("#mncSelectDiv").children().hide("fast");
+				$("#mncSelectDiv").hide("fast");
 				$("#mncAll").prop('checked', true);
-				$("#mncLaAll").show();
 				$("#mncDisabledText").show("fast");
 			}
 			else
@@ -611,6 +610,7 @@ function loadCellData()
 				$("#mncDisabledText").hide("fast");
 				$("#mncSelectDiv").children().hide();
 				$("#mncLaAll").show();
+				$("#mncSelectDiv").show("fast");
 				
 				var mncVar = "";
 				
@@ -699,14 +699,15 @@ function loadCellData()
 								var number = 0;
 								for(var i = 0; i < markers.length; i++)
 									number += parseInt(markers[i].options.displayNumber);
+								
 								var c = ' marker-cluster-';
-								if (number < 5) {
+								if (number < 5)
 									c += 'small';
-								} else if (number < 15) {
+								else if (number < 15)
 									c += 'medium';
-								} else {
+								else
 									c += 'large';
-								}
+								
 								return new L.DivIcon({ html: '<div><span>' + number + '</span></div>', className: 'marker-cluster' + c, iconSize: new L.Point(40, 40) });
 							},
 							maxClusterRadius: paraCellClusterRadius,
@@ -736,15 +737,29 @@ function loadCellData()
 								var number = 0;
 								for(var i = 0; i < markers.length; i++)
 									number += parseInt(markers[i].options.displayNumber);
+								
 								var c = ' marker-cluster-';
-								if (number < Math.pow(2, (20-mapZoom))) {
+								if (number < Math.pow(2, (20-mapZoom)))
 									c += 'small';
-								} else if (number < Math.pow(2, (22-mapZoom))) {
+								else if (number < Math.pow(2, (22-mapZoom)))
 									c += 'medium';
-								} else {
+								else
 									c += 'large';
+			
+								var mWidth = 40;
+								if (number < 1000)
+									c += ' marker-cluster-s';
+								else if (number < 100000) {
+									c += ' marker-cluster-m';
+									mWidth = 50;
+								} else if (number < 1000000) {
+									c += ' marker-cluster-l';
+									mWidth = 60;
+								} else {
+									c += ' marker-cluster-xl';
+									mWidth = 65;
 								}
-								return new L.DivIcon({ html: '<div><span>' + number + '</span></div>', className: 'marker-cluster' + c, iconSize: new L.Point(40, 40) });
+								return new L.DivIcon({ html: '<div><span>' + number + '</span></div>', className: 'marker-cluster' + c, iconSize: new L.Point(mWidth, 40) });
 							},
 							maxClusterRadius: maxCRad,
 							singleMarkerMode: true,
@@ -774,14 +789,15 @@ function loadCellData()
 								var number = 0;
 								for(var i = 0; i < markers.length; i++)
 									number += parseInt(markers[i].options.displayNumber);
+								
 								var c = ' marker-cluster-';
-								if (number < 10) {
+								if (number < 8)
 									c += 'small';
-								} else if (number < 40) {
+								else if (number < 35)
 									c += 'medium';
-								} else {
+								else
 									c += 'large';
-								}
+								
 								return new L.DivIcon({ html: '<div><span>' + number + '</span></div>', className: 'marker-cluster' + c, iconSize: new L.Point(40, 40) });
 							},
 							maxClusterRadius: paraLACClusterRadius,
@@ -1071,6 +1087,12 @@ function init() // All static one-time stuff is here
 					});				
 				}
 	});
+	
+	$("#searchDialog").keypress(function(e) {
+		if (e.keyCode == $.ui.keyCode.ENTER) {
+			search();
+		}
+	});
 		
 	$("#settingsDialog").dialog({
 		autoOpen: false,
@@ -1201,7 +1223,6 @@ function init() // All static one-time stuff is here
 				$("#sLac").val(resArray["a"]);
 				$("#sRadio").val(resArray["r"]);
 				$("#sId").val(resArray["i"]);
-				
 				
 				$.post( 'searchCells.php', {type: 'cell', mcc: $("#sMcc").val(), mnc: $("#sMnc").val()
 							   , lac: $("#sLac").val(), cid: $("#sId").val(), radio: $("#sRadio").val(), dataSource: paraDataSource}, function( data )
