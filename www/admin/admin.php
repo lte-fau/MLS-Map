@@ -41,9 +41,6 @@
 					<h1> Mozilla Location Service: </h1>
 					<p id="mlsDbVersion" class="infoText">Database Date: </p>
 					<p>
-					<label for="linkBox">Download URL:</label><br>
-					<input type="text" name="mlsUrl" id="linkBox" class="TextBox"><br>
-					<p>
 					<button type="Button" id="rebuildMlsButton" class="buildBtn">Rebuild MLS</button>
 				</div>
 			</div>

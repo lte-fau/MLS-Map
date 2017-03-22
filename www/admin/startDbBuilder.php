@@ -9,7 +9,6 @@ set_time_limit(0);
 ob_start();
 
 $pMode = $_POST["mode"];
-$url = $_POST["url"];
 
 if($pMode == "ocid")
 	$mode = "ocid";
@@ -19,7 +18,7 @@ else
 	echo "Invalid mode.";
 
 header('Connection: close');
-header("Content-Encoding: none");
+header('Content-Encoding: none');
 header('Content-Length: '.ob_get_length());
 
 ob_end_flush();
@@ -27,5 +26,5 @@ ob_flush();
 flush();
 
 echo "DbBuilder starting..";
-exec("/usr/bin/php -q dbBuilder.php $mode $url &");
+exec("/usr/bin/php -q dbBuilder.php $mode &");
 ?>

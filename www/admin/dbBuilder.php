@@ -44,9 +44,8 @@ if($argv[1] == "ocid")
 	$finalLacGixName = "mls_lac_gix";
 
 	$infoParam = "MLS_BUILD_DATE";
-	
-	$dataURL = $argv[2];
 
+	$dataURL = "https://d17pt8qph6ncyq.cloudfront.net/export/MLS-full-cell-export-" . date("Y-m-d") . "T000000.csv.gz";
 } else
 {
 	writeLog("Invalid Args.");
@@ -239,7 +238,7 @@ if (!$result) {
 	writeLog("Couldn't create $tempGixName.");
 	exit;
 }
-/*
+
 
 writeLog("Clustering spatial index..");
 $sql = "CLUSTER $tempTableName USING $tempGixName;";
@@ -247,7 +246,7 @@ $result = pg_query($conn, $sql);
 if (!$result) {
 	writeLog("Couldn't cluster $tempGixName.");
 	exit;
-}*/
+}
 
 pg_query($conn, "ALTER TABLE $tempTableName SET LOGGED");
 

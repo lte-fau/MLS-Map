@@ -16,7 +16,7 @@ function startDbBuilder(mode)
 {
 	$("#tabs").tabs("option", "active", 2);
 	
-	$.post('startDbBuilder.php', {mode: mode, url: $("#linkBox").val()}, function(data){
+	$.post('startDbBuilder.php', {mode: mode}, function(data){
 	});
 }
 
