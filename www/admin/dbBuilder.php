@@ -140,10 +140,8 @@ writeLog("Connected to database successfully.");
 writeLog("Creating bulk-import table..");
 pg_query($conn, "DROP TABLE IF EXISTS $tempTableName");
 pg_query($conn, "DROP TABLE IF EXISTS $tempLacTableName");
-
 pg_query($conn, "DROP TABLE IF EXISTS $tempImportName");
 
-// COPY is fastest wenn done in the same transaction as CREATE TABLE
 pg_query($conn, "BEGIN");
 
 $result = pg_query($conn, "CREATE UNLOGGED TABLE $tempImportName(
@@ -209,10 +207,9 @@ if (!$result) {
 	exit;
 }
 
-include "countryDbBuilder.php";
 
 writeLog("Checking for cells outside of their country..");	
-$sql = "UPDATE $tempTableName t1 SET problem = 1 WHERE NOT (pos && (SELECT outline FROM mcc t2 WHERE t2.mcc = t1.mcc))";
+$sql = "UPDATE $tempTableName t1 SET problem = 1 WHERE NOT ST_Intersects(pos, (SELECT outline FROM mcc t2 WHERE t2.mcc = t1.mcc))";
 $result = pg_query($conn, $sql);	
 if (!$result) {
 	writeLog("Error checking cells.");
@@ -401,6 +398,7 @@ pg_query($conn, "ALTER INDEX $tempLacGixName RENAME TO $finalLacGixName");
 
 
 pg_close($conn);
+
 
 $mtime = microtime(); 
 $mtime = explode(" ",$mtime); 

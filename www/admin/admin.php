@@ -43,6 +43,18 @@
 					<p>
 					<button type="Button" id="rebuildMlsButton" class="buildBtn">Rebuild MLS</button>
 				</div>
+
+				<div id="generalDiv">
+					<p>
+					<h1> Country Database: </h1>
+					<p class="infoText">The Country Database Builder uses a cell Database to compute which MCC belongs to which country outline.</p>
+					<p>
+					<select id="countryDataSource">
+						<option>MLS</option>
+						<option>OCID</option>
+					</select>
+					<button type="Button" id="rebuildCountryButton" class="buildBtn">Rebuild CountryDb</button>
+				</div>
 			</div>
 			<div id="ssTab">
 				<div id="leftDiv">

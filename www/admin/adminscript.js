@@ -12,11 +12,11 @@ window.onblur = function () {
   isActive = false; 
 }; 
 
-function startDbBuilder(mode)
+function startDbBuilder(mode, type)
 {
 	$("#tabs").tabs("option", "active", 2);
 	
-	$.post('startDbBuilder.php', {mode: mode}, function(data){
+	$.post('startDbBuilder.php', {mode: mode, type: type}, function(data){
 	});
 }
 
@@ -75,11 +75,13 @@ $(document).ready(function()
 	
 	$("#rebuildOcidButton").button();
 	$("#rebuildMlsButton").button();
+	$("#rebuildCountryButton").button();
 	$("#saveSettingsButton").button();
 	$("#resetSettingsButton").button();
 	
 	$("#linkBox").addClass("ui-widget ui-widget-content ui-corner-all");
 	$(".settingsTextBox").addClass("ui-widget ui-widget-content ui-corner-all");
+	$("#countryDataSource").addClass("ui-widget ui-widget-content ui-corner-all");
 
 	$.post('../getInfo.php', {para: 'MLS_DB_DATE'}, function(data){
 		$("#mlsDbVersion").append(data);
@@ -101,11 +103,16 @@ $(document).ready(function()
 	});
 	
 	$("#rebuildOcidButton").click(function(){
-		startDbBuilder("ocid");
+		startDbBuilder("ocid", "cells");
 	});
 	
 	$("#rebuildMlsButton").click(function(){
-		startDbBuilder("mls");
+		startDbBuilder("mls", "cells");
+	});
+	
+	$("#rebuildCountryButton").click(function(){
+		
+		startDbBuilder($("#countryDataSource").val().toLowerCase(), "country");
 	});
 	
 	refreshConsole();

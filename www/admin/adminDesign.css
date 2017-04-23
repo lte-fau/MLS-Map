@@ -61,6 +61,9 @@ h2{
     float:left;
 }
 
+#generalDiv{
+}
+
 .linkBox{
 	margin: 15px;
 }
@@ -110,9 +113,9 @@ h2{
 }
 
 .buildBtn{
-	width: 175px;
+	width: 200px;
 	margin-left: 5px;
-	font-size: 12px;
+	font-size: 11px;
 	letter-spacing: 1px;
 }
 

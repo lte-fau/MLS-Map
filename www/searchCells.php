@@ -88,6 +88,9 @@ if($type == 'cell')
 			$res .= pg_fetch_result($result, $i, 0) . '|' .  pg_fetch_result($result, $i, 1) . '|' . pg_fetch_result($result, $i, 2) . '|' . pg_fetch_result($result, $i, 3) . '|' . pg_fetch_result($result, $i, 4) . "##";
 		
 		$sql = "SELECT ST_AsGeoJSON(ST_CONVEXHULL(ST_COLLECT(pos))) FROM $mainTableName WHERE mcc = $mcc AND net = $mnc AND area = $lac AND radio = '$radio' AND problem = 0 GROUP BY mcc, net, area, radio";
+		//test
+		//$sql = "SELECT ST_AsGeoJSON(outline) FROM mcc_test WHERE mcc = $mcc";
+
 		$result = pg_query($conn, $sql);
 		if (!$result) {
 			echo "An error occurred while reading Data2.";
@@ -99,6 +102,7 @@ if($type == 'cell')
 			$res .= pg_fetch_result($result, 0, 0);
 
 		$sql = "SELECT ST_AsGeoJSON(outline), size, invalidCells FROM $lacTableName WHERE mcc = $mcc AND net = $mnc AND area = $lac AND radio = '$radio'";
+		
 		$result = pg_query($conn, $sql);
 		if (!$result) {
 			echo "An error occurred while reading Data3.";
