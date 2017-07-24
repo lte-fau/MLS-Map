@@ -5,6 +5,9 @@
 	// Database credentials
 	$connString = "host=XXXX dbname=XXXX user=XXXX password=XXXX";
 	
+	// API-Key
+	$apiKey = "XXXX";
+	
 	// Table names
 	$ocidCellTableName = "ocid";
 	$ocidLacTableName = "ocidLACs";
