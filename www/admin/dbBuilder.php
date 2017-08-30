@@ -32,8 +32,7 @@ if($argv[1] == "ocid")
 	$finalLacGixName = "ocid_lac_gix";
 
 	$infoParam = "OCID_BUILD_DATE";
-	
-	$dataURL = "http://opencellid.org/downloads/?apiKey=" . $ocidAPIKey . "&filename=cell_towers.csv.gz";
+	$dataURL = "https://download.unwiredlabs.com/ocid/downloads?token=" . $ocidAPIKey . "&file=cell_towers.csv.gz";
 } else if($argv[1] == "mls")
 {
 	$fileName = "tmp/MLSTowers.csv.gz";
@@ -407,6 +406,6 @@ $endtime = $mtime;
 $totaltime = ($endtime - $starttime); 
 writeLog("Done. Took $totaltime seconds.");
 
-if($argv[1] == "ocid")
-	include "sMeasDbBuilder.php";
+//if($argv[1] == "ocid")
+//	include "sMeasDbBuilder.php";
 ?>
